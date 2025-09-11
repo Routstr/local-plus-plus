@@ -13,6 +13,8 @@ import {
   TouchableOpacity,
   Animated,
   Dimensions,
+  Modal,
+  TextInput,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Chat } from '@flyerhq/react-native-chat-ui'
@@ -47,12 +49,16 @@ import { initLlama, LlamaContext } from 'llama.rn'
 import type { LLMProvider } from '../services/llm/LLMProvider'
 import { LocalLLMProvider } from '../services/llm/LocalLLMProvider'
 import { RoutstrProvider } from '../services/llm/RoutstrProvider'
+import { loadRoutstrToken, saveRoutstrToken } from '../utils/storage'
 
 type Provider = 'local' | 'routstr'
 
-const ROUTSTR_API_KEY = 'cashuBo2FteCJodHRwczovL21pbnQubWluaWJpdHMuY2FzaC9CaXRjb2luYXVjc2F0YXSBomFpSABQBVDwSUFGYXCBpGFhGQIAYXN4QDE0ZDI1NzgyYTZjMmRhMmYzMTQ4ODRjOTQ2NGIzZGQzOWE3ZjI4ZjNkMTQ2ZmJkODAxMDdiNGU5ZGExYmU5YzdhY1ghA7n8hRUCv2LafOifr8mjyi8ngqrWGjL_RqQL5Ubom-u5YWSjYWVYIKci0IHoFHQRHCVRG7oUO3V1J-5uu46BwUqgnseaIh1cYXNYIMPZ5jVP-DZZn5G8H5U82OEfL171ViW5jIGcWD4pTIiqYXJYIKMLmfhEV6SHwlnbFJnh__HV3U1YXlr2lzUaT5u9x51c'
-const ROUTSTR_MODEL_NAME = 'Routstr Qwen3-Max'
-const ROUTSTR_CHAT_MODEL = 'qwen/qwen3-max'
+// (moved into component state)
+const ROUTSTR_MODELS = [
+  { label: 'Qwen3 Max', id: 'qwen/qwen3-max' },
+  { label: 'GPT-5', id: 'openai/gpt-5' },
+  { label: 'Claude 4 Sonnet', id: 'anthropic/claude-4-sonnet' },
+]
 
 const user = { id: 'user' }
 const assistant = { id: 'assistant' }
@@ -92,15 +98,22 @@ export default function SimpleChatScreen({ navigation }: { navigation: any }) {
   const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT)
   // const [customModels, setCustomModels] = useState<CustomModel[]>([])
   const insets = useSafeAreaInsets()
+  const [routstrToken, setRoutstrToken] = useState<string | null>(null)
+  const [showTokenModal, setShowTokenModal] = useState(false)
+  const [tokenInput, setTokenInput] = useState('')
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    const loadToken = async () => {
+      const token = await loadRoutstrToken()
+      setRoutstrToken(token)
+    }
+    loadToken()
+    return () => {
       if (context) {
         context.release()
       }
-    },
-    [context],
-  )
+    }
+  }, [context])
 
   // // Load custom models on mount (disabled for minimal app)
   // useEffect(() => {
@@ -457,36 +470,44 @@ export default function SimpleChatScreen({ navigation }: { navigation: any }) {
               />
             )
           })}
-          <Text style={themedStyles.modelSectionTitle}>Cloud Models</Text>
-          <View style={{ backgroundColor: theme.colors.surface, borderRadius: 12, marginHorizontal: 16, marginVertical: 8, padding: 16, borderWidth: 1, borderColor: theme.colors.border }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <View>
-                <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text }}>{ROUTSTR_MODEL_NAME}</Text>
-                <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginTop: 4 }}>Uses Routstr API (no download)</Text>
+          <Text style={themedStyles.modelSectionTitle}>Routstr Models</Text>
+          {ROUTSTR_MODELS.map((m) => (
+            <View key={m.id} style={{ backgroundColor: theme.colors.surface, borderRadius: 12, marginHorizontal: 16, marginVertical: 8, padding: 16, borderWidth: 1, borderColor: theme.colors.border }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View>
+                  <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text }}>{m.label}</Text>
+                  <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginTop: 4 }}>Uses Routstr API (no download)</Text>
+                </View>
+                {selectedModelName === m.label ? (
+                  <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>(selected)</Text>
+                ) : (
+                  <TouchableOpacity
+                    style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 6 }}
+                    onPress={async () => {
+                      await llm?.release()
+                      if (!routstrToken) {
+                        setTokenInput('')
+                        setShowTokenModal(true)
+                        return
+                      }
+                      const provider = new RoutstrProvider(m.label)
+                      await provider.initialize({ apiKey: routstrToken, model: m.id })
+                      setLlm(provider)
+                      setSelectedModelName(m.label)
+                      setProvider('routstr')
+                      setIsModelReady(true)
+                      if (messagesRef.current.length === 0) {
+                        addSystemMessage("Hello! I'm ready to chat with you. How can I help you today?")
+                      }
+                      closeDrawer()
+                    }}
+                  >
+                    <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: '600' }}>Use</Text>
+                  </TouchableOpacity>
+                )}
               </View>
-              {selectedModelName === ROUTSTR_MODEL_NAME ? (
-                <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>(selected)</Text>
-              ) : (
-                <TouchableOpacity
-                  style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 6 }}
-                  onPress={async () => {
-                    await llm?.release()
-                    const provider = new RoutstrProvider(ROUTSTR_MODEL_NAME)
-                    await provider.initialize({ apiKey: ROUTSTR_API_KEY, model: ROUTSTR_CHAT_MODEL })
-                    setLlm(provider)
-                    setSelectedModelName(ROUTSTR_MODEL_NAME)
-                    setIsModelReady(true)
-                    if (messagesRef.current.length === 0) {
-                      addSystemMessage("Hello! I'm ready to chat with you. How can I help you today?")
-                    }
-                    closeDrawer()
-                  }}
-                >
-                  <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: '600' }}>Use</Text>
-                </TouchableOpacity>
-              )}
             </View>
-          </View>
+          ))}
           <View style={{ height: 24 }} />
         </ScrollView>
       </Animated.View>
@@ -520,6 +541,41 @@ export default function SimpleChatScreen({ navigation }: { navigation: any }) {
         progress={initProgress}
         showProgressBar={initProgress > 0}
       />
+
+      {/* Routstr Token Modal */}
+      <Modal visible={showTokenModal} transparent animationType="fade" onRequestClose={() => setShowTokenModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <View style={{ width: '100%', backgroundColor: theme.colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: theme.colors.border }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.text, marginBottom: 8 }}>Enter Cashu Token</Text>
+            <Text style={{ fontSize: 13, color: theme.colors.textSecondary, marginBottom: 12 }}>Paste your Routstr Cashu token. It will be stored locally and used as the API key.</Text>
+            <TextInput
+              value={tokenInput}
+              onChangeText={setTokenInput}
+              placeholder="cashu..."
+              placeholderTextColor={theme.colors.textSecondary}
+              style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, color: theme.colors.text }}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 }}>
+              <TouchableOpacity onPress={() => setShowTokenModal(false)} style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
+                <Text style={{ color: theme.colors.textSecondary }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={async () => {
+                  if (!tokenInput.trim()) return
+                  await saveRoutstrToken(tokenInput.trim())
+                  setRoutstrToken(tokenInput.trim())
+                  setShowTokenModal(false)
+                }}
+                style={{ paddingHorizontal: 12, paddingVertical: 8 }}
+              >
+                <Text style={{ color: theme.colors.primary, fontWeight: '700' }}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   )
 }

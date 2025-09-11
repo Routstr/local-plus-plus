@@ -40,6 +40,7 @@ const COMPLETION_PARAMS_KEY = '@llama_completion_params'
 const TTS_PARAMS_KEY = '@llama_tts_params'
 const CUSTOM_MODELS_KEY = '@llama_custom_models'
 const MCP_CONFIG_KEY = '@llama_mcp_config'
+const ROUTSTR_TOKEN_KEY = '@routstr_api_token'
 
 // Default parameter values
 export const DEFAULT_CONTEXT_PARAMS: ContextParams = {
@@ -267,6 +268,34 @@ export const resetMCPConfig = async (): Promise<void> => {
     await AsyncStorage.removeItem(MCP_CONFIG_KEY)
   } catch (error) {
     console.error('Error resetting MCP config:', error)
+    throw error
+  }
+}
+
+// Routstr token (Cashu token used as API key)
+export const saveRoutstrToken = async (token: string): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(ROUTSTR_TOKEN_KEY, token)
+  } catch (error) {
+    console.error('Error saving Routstr token:', error)
+    throw error
+  }
+}
+
+export const loadRoutstrToken = async (): Promise<string | null> => {
+  try {
+    return (await AsyncStorage.getItem(ROUTSTR_TOKEN_KEY))
+  } catch (error) {
+    console.error('Error loading Routstr token:', error)
+    return null
+  }
+}
+
+export const resetRoutstrToken = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem(ROUTSTR_TOKEN_KEY)
+  } catch (error) {
+    console.error('Error resetting Routstr token:', error)
     throw error
   }
 }
