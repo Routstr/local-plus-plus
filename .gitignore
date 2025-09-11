@@ -1,0 +1,68 @@
+**/assets/*.bin
+ios/.xcode.env.local
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+*.log
+.eslintcache
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Caches
+.metro-cache/
+.cache/
+tmp/
+dist/
+coverage/
+
+# Watchman
+.watchman/
+
+# Android
+android/.gradle/
+android/local.properties
+android/**/.cxx/
+android/**/build/
+android/app/debug.keystore
+*.keystore
+*.jks
+
+# iOS
+ios/Pods/
+ios/build/
+ios/DerivedData/
+ios/**/xcuserdata/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xccheckout
+*.xcuserstate
+
+# Xcode workspace user data
+ios/**/project.xcworkspace/xcuserdata/
+
+# Misc
+*.swp
+*.swo
+*.tmp
+*.orig
+*.rej
