@@ -1,85 +1,74 @@
-# llama.rn example
+# Local AI + Routstr Chat App
 
-This is an example project to show how to use the llama.rn library.
+React Native chat app that runs local LLMs on-device and can switch to Routstr cloud models for remote inference. The UI is optimized for a chat-first workflow with a side drawer for model selection.
 
-For iPhone/iPad/Mac, you can try it by downloading our test app from [TestFlight](https://testflight.apple.com/join/MmzGSneU).
+## Features
 
-## Examples
+- **Local models (on-device)**: GGUF models loaded via `llama.rn` with streaming output and a Stop button.
+- **Routstr cloud models**: Call `https://api.routstr.com/v1/chat/completions` with standard Chat Completions and SSE streaming.
+- **Single chat UI**: Toggle the side menu to pick models; the header shows the selected model.
+- **Download manager**: Built-in model downloader for local models.
+- **Persistent params**: Context/completion params loaded from storage.
 
-The example app demonstrates various local LLM capabilities:
+## Where things live
 
-- **💬 Simple Chat** - Basic chat interface with text generation ([SimpleChatScreen.tsx](src/screens/SimpleChatScreen.tsx))
-- **👁️ Multimodal** - Image/audio analysis and visual/audio question answering ([MultimodalScreen.tsx](src/screens/MultimodalScreen.tsx))
-- **🛠️ Tool Calling & MCP** - Advanced function calling capabilities with custom tools (mock responses) and MCP integration ([ToolCallsScreen.tsx](src/screens/ToolCallsScreen.tsx))
-- **📊 Embedding** - Vector embeddings and semantic search in memory ([EmbeddingScreen.tsx](src/screens/EmbeddingScreen.tsx))
-- **🔊 Text-to-Speech** - Local voice synthesis with OuteTTS ([TTSScreen.tsx](src/screens/TTSScreen.tsx))
-- **📊 Model Info** - Model diagnostics and system information ([ModelInfoScreen.tsx](src/screens/ModelInfoScreen.tsx))
+- Chat screen and drawer: `src/screens/SimpleChatScreen.tsx`
+- Model cards (download/init): `src/components/ModelDownloadCard.tsx`
+- LLM providers (abstraction):
+  - `src/services/llm/LLMProvider.ts` – shared interface
+  - `src/services/llm/LocalLLMProvider.ts` – local inference via `llama.rn`
+  - `src/services/llm/RoutstrProvider.ts` – Routstr remote via SSE
+- Model constants: `src/utils/constants.ts`
 
-Used models are listed in [src/utils/constants.ts](src/utils/constants.ts).
+## How the provider system works
 
-## Setup (Standalone)
+We use an `LLMProvider` interface with `initialize`, `sendChat`, `stop`, and `release` methods. The chat screen holds a single provider instance (`llm`) and delegates message generation to it.
 
-From this `example` directory:
+- Local provider streams via `llama.rn` callbacks.
+- Routstr provider streams via XHR Server-Sent Events, parsing `data:` lines and accumulating deltas without duplication.
+- The Stop button is shown only for the local provider and calls `stop()`.
+
+## Setup
 
 ```bash
 npm install
 ```
 
-## iOS
-
-1. Install pods
+### iOS
 
 ```bash
 npm run pods
-```
-
-2. Run the example
-
-```bash
 npm run ios
-# Use device
+# To target a device
 npm run ios -- --device "<device name>"
-# With release mode
+# Release
 npm run ios -- --mode Release
 ```
 
-## Android
-
-Run the example:
+### Android
 
 ```bash
 npm run android
-# With release mode
+# Release
 npm run android -- --mode release
 ```
 
-## Build with frameworks/libs
+## Configure Routstr
 
-This example uses the published `llama.rn` package by default. You can also build native frameworks/libs locally if needed.
+Edit `src/screens/SimpleChatScreen.tsx` and set:
 
-```bash
-# Build iOS frameworks
-npm run build:ios-frameworks
-# Build Android libs
-npm run build:android-libs
-```
+- `ROUTSTR_API_KEY`: your API key (Bearer token)
+- `ROUTSTR_CHAT_MODEL`: e.g. `qwen/qwen3-max`
+- `ROUTSTR_MODEL_NAME`: UI label shown in the drawer header
 
-Then you can setup the environment variable / properties in your project:
+## Using the app
 
-iOS:
+1) Launch the app; open the drawer (hamburger) in the chat header.
+2) Pick a default local model. It will download if missing, then initialize and stream.
+3) Or choose the Routstr model; no download necessary. Messages stream from the Routstr API.
+4) Switch models anytime; we prevent duplicate welcome messages and keep the chat input disabled until ready.
 
-```bash
-RNLLAMA_BUILD_FROM_SOURCE=0 npm run pods
-```
+## Notes
 
-Android: Edit `android/gradle.properties` and set `rnllamaBuildFromSource` to `false`.
-
-## Roadmap
-
-The following features are planned for future updates:
-
-- [x] **🔧 Add custom model modal** - Interface for loading and managing custom models
-- [x] **📊 Add embedding example** - Demonstrate text embedding and similarity search capabilities
-- [ ] **🛠️ ToolCallsScreen: Support MCP** - Integrate Model Context Protocol via [`mcp-sdk-client-ssejs`](https://github.com/mybigday/mcp-sdk-client-ssejs)
-- [ ] **🔍 Add reranker example** - Show document reranking for improved search relevance
-- [ ] **⚙️ Check hardware requirement for model** - Validate device capabilities before model loading
+- Local streaming is handled by `llama.rn`; remote streaming uses XHR SSE parsing for React Native compatibility.
+- If you change providers frequently, we release the previous provider/context before initializing the next.
