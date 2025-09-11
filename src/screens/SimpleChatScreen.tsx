@@ -50,9 +50,9 @@ import { RoutstrProvider } from '../services/llm/RoutstrProvider'
 
 type Provider = 'local' | 'routstr'
 
-const ROUTSTR_API_KEY = 'sk-REPLACE_ME'
-const ROUTSTR_MODEL_NAME = 'Routstr GPT-4'
-const ROUTSTR_CHAT_MODEL = 'gpt-4'
+const ROUTSTR_API_KEY = 'cashuBo2FteCJodHRwczovL21pbnQubWluaWJpdHMuY2FzaC9CaXRjb2luYXVjc2F0YXSBomFpSABQBVDwSUFGYXCBpGFhGQIAYXN4QDE0ZDI1NzgyYTZjMmRhMmYzMTQ4ODRjOTQ2NGIzZGQzOWE3ZjI4ZjNkMTQ2ZmJkODAxMDdiNGU5ZGExYmU5YzdhY1ghA7n8hRUCv2LafOifr8mjyi8ngqrWGjL_RqQL5Ubom-u5YWSjYWVYIKci0IHoFHQRHCVRG7oUO3V1J-5uu46BwUqgnseaIh1cYXNYIMPZ5jVP-DZZn5G8H5U82OEfL171ViW5jIGcWD4pTIiqYXJYIKMLmfhEV6SHwlnbFJnh__HV3U1YXlr2lzUaT5u9x51c'
+const ROUTSTR_MODEL_NAME = 'Routstr Qwen3-Max'
+const ROUTSTR_CHAT_MODEL = 'qwen/qwen3-max'
 
 const user = { id: 'user' }
 const assistant = { id: 'assistant' }

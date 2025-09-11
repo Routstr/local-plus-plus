@@ -1,27 +1,27 @@
 export const MODELS = {
   SMOL_LM_3: {
-    name: 'SmolLM3 3B (Q4_K_M)',
+    name: 'SmolLM3 3B',
     repo: 'ggml-org/SmolLM3-3B-GGUF',
     filename: 'SmolLM3-Q4_K_M.gguf',
     mmproj: undefined,
     size: '1.78GB',
   },
   GEMMA_3N_E2B: {
-    name: 'Gemma 3N E2B IT (Q3_K_M)',
+    name: 'Gemma 3N E2B IT',
     repo: 'unsloth/gemma-3n-E2B-it-GGUF',
     filename: 'gemma-3n-E2B-it-Q3_K_M.gguf',
     mmproj: undefined,
     size: '2.31GB',
   },
   GEMMA_3N_E4B: {
-    name: 'Gemma 3N E4B IT (Q3_K_M)',
+    name: 'Gemma 3N E4B IT',
     repo: 'unsloth/gemma-3n-E4B-it-GGUF',
     filename: 'gemma-3n-E4B-it-Q3_K_M.gguf',
     mmproj: undefined,
     size: '3.44GB',
   },
   QWEN_3_4B: {
-    name: 'Qwen 3 4B (Q3_K_M)',
+    name: 'Qwen 3 4B',
     repo: 'unsloth/Qwen3-4B-GGUF',
     filename: 'Qwen3-4B-Q3_K_M.gguf',
     mmproj: undefined,
@@ -63,7 +63,7 @@ export const MODELS = {
     size: '2.1GB (model) + 1.54GB (mmproj)',
   },
   GEMMA_3_4B_QAT: {
-    name: 'Gemma 3 4B IT QAT (Q3_K_M)',
+    name: 'Gemma 3 4B IT QAT',
     repo: 'unsloth/gemma-3-4b-it-qat-GGUF',
     filename: 'gemma-3-4b-it-qat-Q3_K_M.gguf',
     mmproj: 'mmproj-BF16.gguf',
