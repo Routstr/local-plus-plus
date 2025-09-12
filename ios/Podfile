@@ -19,7 +19,7 @@ ENV['RCT_NEW_ARCH_ENABLED'] = '1'
 
 ENV['RNLLAMA_BUILD_FROM_SOURCE'] = ENV['RNLLAMA_BUILD_FROM_SOURCE'] || '1'
 
-target 'RNLlamaExample' do
+target 'LocalPlusPlus' do
   config = use_native_modules!
 
   use_react_native!(
@@ -28,7 +28,7 @@ target 'RNLlamaExample' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
-  target 'RNLlamaExampleTests' do
+  target 'LocalPlusPlusTests' do
     inherit! :complete
     # Pods for testing
   end

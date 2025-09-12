@@ -1,4 +1,4 @@
-package com.rnllamaexample
+package com.routstr.localplusplus
 
 import android.app.Application
 import com.facebook.react.PackageList
