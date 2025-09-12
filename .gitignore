@@ -66,3 +66,4 @@ ios/**/project.xcworkspace/xcuserdata/
 *.tmp
 *.orig
 *.rej
+example/**/*
