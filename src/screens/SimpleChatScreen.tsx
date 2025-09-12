@@ -45,7 +45,6 @@ import {
   // loadCustomModels,
 } from '../utils/storage'
 import type { LLMMessage } from '../utils/llmMessages'
-import { initLlama, LlamaContext } from 'llama.rn'
 import type { LLMProvider } from '../services/llm/LLMProvider'
 import { LocalLLMProvider } from '../services/llm/LocalLLMProvider'
 import { RoutstrProvider } from '../services/llm/RoutstrProvider'
@@ -76,7 +75,6 @@ export default function SimpleChatScreen({ navigation }: { navigation: any }) {
   const [, setMessagesVersion] = useState(0) // For UI updates
   const [isInitLoading, setIsInitLoading] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
-  const [context, setContext] = useState<LlamaContext | null>(null)
   const [llm, setLlm] = useState<LLMProvider | null>(null)
   const [isModelReady, setIsModelReady] = useState(false)
   const [initProgress, setInitProgress] = useState(0)
@@ -108,12 +106,9 @@ export default function SimpleChatScreen({ navigation }: { navigation: any }) {
       setRoutstrToken(token)
     }
     loadToken()
-    return () => {
-      if (context) {
-        context.release()
-      }
-    }
-  }, [context])
+  }, [])
+
+  useEffect(() => () => { void llm?.release() }, [llm])
 
   // // Load custom models on mount (disabled for minimal app)
   // useEffect(() => {
@@ -269,18 +264,6 @@ export default function SimpleChatScreen({ navigation }: { navigation: any }) {
       setProvider('local')
 
       const params = contextParams || (await loadContextParams())
-      const llamaContext = await initLlama(
-        {
-          model: modelPath,
-          ...params,
-        },
-        (progress) => {
-          // Progress is reported as 1 to 100
-          setInitProgress(progress)
-        },
-      )
-
-      setContext(llamaContext)
       const provider = new LocalLLMProvider(modelPath.split('/').pop() || 'Local Model')
       await provider.initialize({ model: modelPath, params, onProgress: (p) => setInitProgress(p) })
       setLlm(provider)
@@ -464,7 +447,6 @@ export default function SimpleChatScreen({ navigation }: { navigation: any }) {
                   setSelectedModelName(modelInfo.name)
                   await llm?.release()
                   await initializeModel(path)
-                  setLlm(new LocalLLMProvider(modelInfo.name))
                   closeDrawer()
                 }}
               />
