@@ -28,7 +28,7 @@ addNativeLogListener((level, text) => {
   let log = (t: string) => t // noop
   // Uncomment to test:
   // ;({log} = console)
-  log(['[rnllama]', level ? `[${level}]` : '', text].filter(Boolean).join(' '))
+  log(['[localplusplus]', level ? `[${level}]` : '', text].filter(Boolean).join(' '))
 })
 
 enableScreens()
