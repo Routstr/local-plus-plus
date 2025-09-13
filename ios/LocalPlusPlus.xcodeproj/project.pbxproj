@@ -281,9 +281,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-LocalPlusPlus/Pods-LocalPlusPlus-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-LocalPlusPlus/Pods-LocalPlusPlus-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -342,9 +346,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-LocalPlusPlus-LocalPlusPlusTests/Pods-LocalPlusPlus-LocalPlusPlusTests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-LocalPlusPlus-LocalPlusPlusTests/Pods-LocalPlusPlus-LocalPlusPlusTests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -359,9 +367,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-LocalPlusPlus/Pods-LocalPlusPlus-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-LocalPlusPlus/Pods-LocalPlusPlus-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -376,9 +388,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-LocalPlusPlus-LocalPlusPlusTests/Pods-LocalPlusPlus-LocalPlusPlusTests-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-LocalPlusPlus-LocalPlusPlusTests/Pods-LocalPlusPlus-LocalPlusPlusTests-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -482,12 +498,14 @@
 				DEVELOPMENT_TEAM = YLK778Z528;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = LocalPlusPlus/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Local++";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.1;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -514,12 +532,14 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = YLK778Z528;
 				INFOPLIST_FILE = LocalPlusPlus/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Local++";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.1;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -608,10 +628,7 @@
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
@@ -684,10 +701,7 @@
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;
