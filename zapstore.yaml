@@ -1,0 +1,6 @@
+repository: https://github.com/routstr/local-plus-plus
+icon: logo.png
+assets:
+  - .*.apk
+remote_metadata:
+  - github
