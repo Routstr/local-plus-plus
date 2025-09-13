@@ -1,15 +1,16 @@
-/* eslint-disable jsx-a11y/accessible-emoji */
-import * as React from 'react'
-import { View, Text, StyleSheet, ScrollView, Linking } from 'react-native'
+
+import * as React from 'react';
+import { InteractionManager } from 'react-native';
 import {
   GestureHandlerRootView,
-  TouchableOpacity,
-} from 'react-native-gesture-handler'
-import { enableScreens } from 'react-native-screens'
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native'
-import { createNativeStackNavigator } from '@react-navigation/native-stack'
-import { toggleNativeLog, addNativeLogListener, BuildInfo } from 'llama.rn'
-import SimpleChatScreen from './screens/SimpleChatScreen'
+} from 'react-native-gesture-handler';
+import { enableScreens } from 'react-native-screens';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { toggleNativeLog, addNativeLogListener } from 'llama.rn';
+import SimpleChatScreen from './screens/SimpleChatScreen';
+import ModelManagerScreen from './screens/ModelManagerScreen';
+import RoutstrSettingsScreen from './screens/RoutstrSettingsScreen';
 // import MultimodalScreen from './screens/MultimodalScreen'
 // import TTSScreen from './screens/TTSScreen'
 // import ToolCallsScreen from './screens/ToolCallsScreen'
@@ -17,21 +18,21 @@ import SimpleChatScreen from './screens/SimpleChatScreen'
 // import BenchScreen from './screens/BenchScreen'
 // import TextCompletionScreen from './screens/TextCompletionScreen'
 // import EmbeddingScreen from './screens/EmbeddingScreen'
-import { ThemeProvider, useTheme } from './contexts/ThemeContext'
-import { createThemedStyles } from './styles/commonStyles'
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { refreshAndCacheRoutstrModels } from './services/RoutstrModelsService';
 // import { Menu } from './components/Menu'
 
 // Example: Catch logs from llama.cpp
-toggleNativeLog(true)
+toggleNativeLog(true);
 addNativeLogListener((level, text) => {
-  // eslint-disable-next-line prefer-const
-  let log = (t: string) => t // noop
+
+  let log = (t: string) => t; // noop
   // Uncomment to test:
   // ;({log} = console)
-  log(['[localplusplus]', level ? `[${level}]` : '', text].filter(Boolean).join(' '))
-})
+  log(['[localplusplus]', level ? `[${level}]` : '', text].filter(Boolean).join(' '));
+});
 
-enableScreens()
+enableScreens();
 
 // function HomeScreenComponent({ navigation }: { navigation: any }) {
 //   const { theme } = useTheme()
@@ -51,11 +52,24 @@ enableScreens()
 //   return null
 // }
 
-const Stack = createNativeStackNavigator()
+const Stack = createNativeStackNavigator();
 
 function AppContent() {
-  const { theme } = useTheme()
-  const navigationTheme = theme.dark ? DarkTheme : DefaultTheme
+  const { theme } = useTheme();
+  const navigationTheme = theme.dark ? DarkTheme : DefaultTheme;
+  React.useEffect(() => {
+    // Fetch Routstr models once at app startup and cache, without blocking first render
+    const schedule = InteractionManager.runAfterInteractions(() => {
+      setTimeout(async () => {
+        try {
+          await refreshAndCacheRoutstrModels();
+        } catch {
+          // ignore startup fetch failure
+        }
+      }, 0);
+    });
+    return () => schedule.cancel && schedule.cancel();
+  }, []);
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <NavigationContainer theme={navigationTheme}>
@@ -71,6 +85,16 @@ function AppContent() {
             name="SimpleChat"
             component={SimpleChatScreen}
             options={{ title: 'Chat' }}
+          />
+          <Stack.Screen
+            name="ModelManager"
+            component={ModelManagerScreen}
+            options={{ title: 'Model Manager' }}
+          />
+          <Stack.Screen
+            name="RoutstrSettings"
+            component={RoutstrSettingsScreen}
+            options={{ title: 'Routstr Settings' }}
           />
           {/**
            * The following screens are intentionally commented out to keep the app minimal.
@@ -89,7 +113,7 @@ function AppContent() {
         </Stack.Navigator>
       </NavigationContainer>
     </GestureHandlerRootView>
-  )
+  );
 }
 
 function App() {
@@ -97,7 +121,7 @@ function App() {
     <ThemeProvider>
       <AppContent />
     </ThemeProvider>
-  )
+  );
 }
 
-export default App
+export default App;
