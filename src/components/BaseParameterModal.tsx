@@ -1,4 +1,4 @@
-import React, { type ReactNode } from 'react'
+import React, { type ReactNode } from 'react';
 import {
   Modal,
   View,
@@ -7,10 +7,10 @@ import {
   StyleSheet,
   ScrollView,
   Platform,
-} from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { createThemedStyles } from '../styles/commonStyles'
-import { useTheme } from '../contexts/ThemeContext'
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { createThemedStyles } from '../styles/commonStyles';
+import { useTheme } from '../contexts/ThemeContext';
 
 
 interface BaseParameterModalProps {
@@ -38,9 +38,9 @@ export default function BaseParameterModal({
   warningText = '',
   children,
 }: BaseParameterModalProps) {
-  const { theme } = useTheme()
-  const themedStyles = createThemedStyles(theme.colors)
-  
+  const { theme } = useTheme();
+  const themedStyles = createThemedStyles(theme.colors);
+
   const styles = StyleSheet.create({
     container: themedStyles.container,
     header: {
@@ -112,7 +112,7 @@ export default function BaseParameterModal({
       fontWeight: '600',
       textAlign: 'center',
     },
-  })
+  });
   return (
     <Modal
       visible={visible}
@@ -154,5 +154,5 @@ export default function BaseParameterModal({
         </ScrollView>
       </SafeAreaView>
     </Modal>
-  )
+  );
 }

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
-import { AudioContext } from 'react-native-audio-api'
-import { useTheme } from '../contexts/ThemeContext'
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { AudioContext } from 'react-native-audio-api';
+import { useTheme } from '../contexts/ThemeContext';
 
 export const AudioPlayer = ({
   audio,
@@ -10,16 +10,16 @@ export const AudioPlayer = ({
   audio: Float32Array
   sr: number
 }) => {
-  const { theme } = useTheme()
-  const ctxRef = useRef<AudioContext | null>(null)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const [isPressed, setIsPressed] = useState(false)
-  const duration = useMemo(() => audio.length / sr, [audio, sr])
+  const { theme } = useTheme();
+  const ctxRef = useRef<AudioContext | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [isPressed, setIsPressed] = useState(false);
+  const duration = useMemo(() => audio.length / sr, [audio, sr]);
   const progressPercentage = useMemo(
     () => (progress / duration) * 100,
     [progress, duration],
-  )
+  );
 
   const styles = StyleSheet.create({
     container: {
@@ -95,39 +95,39 @@ export const AudioPlayer = ({
       marginTop: 4,
       fontVariant: ['tabular-nums'],
     },
-  })
+  });
 
   useEffect(() => {
     if (isPlaying) {
-      setProgress(0)
+      setProgress(0);
       const interval = setInterval(() => {
-        setProgress(ctxRef.current?.currentTime ?? 0)
-      }, 10)
-      ctxRef.current ??= new AudioContext()
-      const audioBuffer = ctxRef.current.createBuffer(1, audio.length, sr)
-      audioBuffer.copyToChannel(new Float32Array(audio), 0)
-      const source = ctxRef.current.createBufferSource()
-      source.buffer = audioBuffer
-      source.connect(ctxRef.current.destination)
-      source.start()
+        setProgress(ctxRef.current?.currentTime ?? 0);
+      }, 10);
+      ctxRef.current ??= new AudioContext();
+      const audioBuffer = ctxRef.current.createBuffer(1, audio.length, sr);
+      audioBuffer.copyToChannel(new Float32Array(audio), 0);
+      const source = ctxRef.current.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(ctxRef.current.destination);
+      source.start();
       source.onended = () => {
-        clearInterval(interval)
-        setIsPlaying(false)
-        setProgress(duration)
-      }
-      return () => clearInterval(interval)
+        clearInterval(interval);
+        setIsPlaying(false);
+        setProgress(duration);
+      };
+      return () => clearInterval(interval);
     } else {
-      ctxRef.current?.close()
-      ctxRef.current = null
-      return () => {}
+      ctxRef.current?.close();
+      ctxRef.current = null;
+      return () => {};
     }
-  }, [isPlaying, audio, sr, duration])
+  }, [isPlaying, audio, sr, duration]);
 
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = Math.floor(seconds % 60)
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   return (
     <View style={styles.container}>
@@ -158,5 +158,5 @@ export const AudioPlayer = ({
         {isPlaying ? 'Playing...' : 'Ready to play'}
       </Text>
     </View>
-  )
-}
+  );
+};

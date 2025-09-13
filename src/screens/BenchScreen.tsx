@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,30 +8,30 @@ import {
   TouchableOpacity,
   Clipboard,
   StyleSheet,
-} from 'react-native'
-import ModelDownloadCard from '../components/ModelDownloadCard'
-import ContextParamsModal from '../components/ContextParamsModal'
-import CustomModelModal from '../components/CustomModelModal'
-import CustomModelCard from '../components/CustomModelCard'
-import { MaskedProgress } from '../components/MaskedProgress'
-import { HeaderButton } from '../components/HeaderButton'
-import { createThemedStyles } from '../styles/commonStyles'
-import { useTheme } from '../contexts/ThemeContext'
-import { MODELS } from '../utils/constants'
-import type { ContextParams, CustomModel } from '../utils/storage'
-import { loadContextParams, loadCustomModels } from '../utils/storage'
-import { initLlama, LlamaContext } from 'llama.rn'
+} from 'react-native';
+import ModelDownloadCard from '../components/ModelDownloadCard';
+import ContextParamsModal from '../components/ContextParamsModal';
+import CustomModelModal from '../components/CustomModelModal';
+import CustomModelCard from '../components/CustomModelCard';
+import { MaskedProgress } from '../components/MaskedProgress';
+import { HeaderButton } from '../components/HeaderButton';
+import { createThemedStyles } from '../styles/commonStyles';
+import { useTheme } from '../contexts/ThemeContext';
+import { MODELS } from '../utils/constants';
+import type { ContextParams, CustomModel } from '../utils/storage';
+import { loadContextParams, loadCustomModels } from '../utils/storage';
+import { initLlama, LlamaContext } from 'llama.rn';
 
 
 // Filter models to only include LLM models (no mmproj or vocoder)
 const LLM_MODELS = Object.entries(MODELS).filter(([_key, model]) => {
-  const modelWithExtras = model as typeof model & { vocoder?: any }
-  return !modelWithExtras.vocoder
-})
+  const modelWithExtras = model as typeof model & { vocoder?: any };
+  return !modelWithExtras.vocoder;
+});
 
 export default function BenchScreen({ navigation }: { navigation: any }) {
-  const { theme } = useTheme()
-  const themedStyles = createThemedStyles(theme.colors)
+  const { theme } = useTheme();
+  const themedStyles = createThemedStyles(theme.colors);
 
   const styles = StyleSheet.create({
     container: themedStyles.container,
@@ -125,64 +125,64 @@ export default function BenchScreen({ navigation }: { navigation: any }) {
       justifyContent: 'space-between' as const,
       marginTop: 8,
     },
-  })
-  const [context, setContext] = useState<LlamaContext | null>(null)
-  const [isModelReady, setIsModelReady] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [isBenching, setIsBenching] = useState(false)
-  const [initProgress, setInitProgress] = useState(0)
-  const [showContextParamsModal, setShowContextParamsModal] = useState(false)
-  const [showCustomModelModal, setShowCustomModelModal] = useState(false)
-  const [contextParams, setContextParams] = useState<ContextParams | null>(null)
-  const [customModels, setCustomModels] = useState<CustomModel[]>([])
-  const [logs, setLogs] = useState<string[]>([])
+  });
+  const [context, setContext] = useState<LlamaContext | null>(null);
+  const [isModelReady, setIsModelReady] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isBenching, setIsBenching] = useState(false);
+  const [initProgress, setInitProgress] = useState(0);
+  const [showContextParamsModal, setShowContextParamsModal] = useState(false);
+  const [showCustomModelModal, setShowCustomModelModal] = useState(false);
+  const [contextParams, setContextParams] = useState<ContextParams | null>(null);
+  const [customModels, setCustomModels] = useState<CustomModel[]>([]);
+  const [logs, setLogs] = useState<string[]>([]);
   const [modelInfo, setModelInfo] = useState<{
     name: string
     path: string
-  } | null>(null)
+  } | null>(null);
 
-  const logsRef = useRef<string[]>([])
+  const logsRef = useRef<string[]>([]);
 
   // Sync logs state with ref for better performance
   useEffect(() => {
-    logsRef.current = logs
-  }, [logs])
+    logsRef.current = logs;
+  }, [logs]);
 
   useEffect(
     () => () => {
       if (context) {
-        context.release()
+        context.release();
       }
     },
     [context],
-  )
+  );
 
   // Load custom models on mount
   useEffect(() => {
     const loadCustomModelsData = async () => {
       try {
-        const models = await loadCustomModels()
-        setCustomModels(models)
+        const models = await loadCustomModels();
+        setCustomModels(models);
       } catch (error) {
-        console.error('Error loading custom models:', error)
+        console.error('Error loading custom models:', error);
       }
-    }
-    loadCustomModelsData()
-  }, [])
+    };
+    loadCustomModelsData();
+  }, []);
 
   const addLog = (message: string) => {
-    const timestamp = new Date().toLocaleTimeString()
-    const logEntry = `[${timestamp}] ${message}`
-    setLogs((prev) => [...prev, logEntry])
-  }
+    const timestamp = new Date().toLocaleTimeString();
+    const logEntry = `[${timestamp}] ${message}`;
+    setLogs((prev) => [...prev, logEntry]);
+  };
 
   const clearLogs = () => {
-    setLogs([])
-  }
+    setLogs([]);
+  };
 
   const copyLogs = () => {
-    Clipboard.setString(logs.join('\n'))
-  }
+    Clipboard.setString(logs.join('\n'));
+  };
 
   // Set up navigation header buttons
   useLayoutEffect(() => {
@@ -191,7 +191,7 @@ export default function BenchScreen({ navigation }: { navigation: any }) {
         headerRight: () => (
           <HeaderButton iconName="refresh" onPress={clearLogs} />
         ),
-      })
+      });
     } else {
       navigation.setOptions({
         headerRight: () => (
@@ -200,48 +200,48 @@ export default function BenchScreen({ navigation }: { navigation: any }) {
             onPress={() => setShowContextParamsModal(true)}
           />
         ),
-      })
+      });
     }
-  }, [navigation, isModelReady])
+  }, [navigation, isModelReady]);
 
   const handleSaveContextParams = (params: ContextParams) => {
-    setContextParams(params)
-  }
+    setContextParams(params);
+  };
 
   const handleCustomModelAdded = async (_model: CustomModel) => {
     // Reload custom models to reflect the new addition
-    const models = await loadCustomModels()
-    setCustomModels(models)
-  }
+    const models = await loadCustomModels();
+    setCustomModels(models);
+  };
 
   const handleCustomModelRemoved = async () => {
     // Reload custom models to reflect the removal
-    const models = await loadCustomModels()
-    setCustomModels(models)
-  }
+    const models = await loadCustomModels();
+    setCustomModels(models);
+  };
 
   const initializeModel = async (modelPath: string, modelKey?: string) => {
     try {
-      setIsLoading(true)
-      setInitProgress(0)
+      setIsLoading(true);
+      setInitProgress(0);
 
-      let modelName: string
+      let modelName: string;
       if (modelKey) {
         // Predefined model
-        const model = MODELS[modelKey as keyof typeof MODELS]
-        modelName = model.name
+        const model = MODELS[modelKey as keyof typeof MODELS];
+        modelName = model.name;
       } else {
         // Custom model - extract name from path
-        modelName = modelPath.split('/').pop() || 'Custom Model'
+        modelName = modelPath.split('/').pop() || 'Custom Model';
       }
 
-      setModelInfo({ name: modelName, path: modelPath })
+      setModelInfo({ name: modelName, path: modelPath });
 
-      addLog(`Initializing model: ${modelName}`)
-      addLog(`Model path: ${modelPath}`)
+      addLog(`Initializing model: ${modelName}`);
+      addLog(`Model path: ${modelPath}`);
 
-      const params = contextParams || (await loadContextParams())
-      addLog(`Using context params: ${JSON.stringify(params)}`)
+      const params = contextParams || (await loadContextParams());
+      addLog(`Using context params: ${JSON.stringify(params)}`);
 
       const llamaContext = await initLlama(
         {
@@ -249,50 +249,50 @@ export default function BenchScreen({ navigation }: { navigation: any }) {
           ...params,
         },
         (progress) => {
-          setInitProgress(progress)
+          setInitProgress(progress);
         },
-      )
+      );
 
-      setContext(llamaContext)
-      setIsModelReady(true)
-      setInitProgress(100)
+      setContext(llamaContext);
+      setIsModelReady(true);
+      setInitProgress(100);
 
-      addLog('Model initialized successfully!')
-      addLog('Ready to run benchmarks.')
+      addLog('Model initialized successfully!');
+      addLog('Ready to run benchmarks.');
     } catch (error: any) {
-      addLog(`Failed to initialize model: ${error.message}`)
-      Alert.alert('Error', `Failed to initialize model: ${error.message}`)
+      addLog(`Failed to initialize model: ${error.message}`);
+      Alert.alert('Error', `Failed to initialize model: ${error.message}`);
     } finally {
-      setIsLoading(false)
-      setInitProgress(0)
+      setIsLoading(false);
+      setInitProgress(0);
     }
-  }
+  };
 
   const runBenchmark = async () => {
-    if (!context || isBenching) return
+    if (!context || isBenching) {return;}
 
     try {
-      setIsBenching(true)
-      addLog('🚀 Starting benchmark...')
+      setIsBenching(true);
+      addLog('🚀 Starting benchmark...');
 
       // Heat-up phase
-      addLog('Warming up the model...')
-      const t0 = Date.now()
-      await context.bench(8, 4, 1, 1)
-      const tHeat = Date.now() - t0
+      addLog('Warming up the model...');
+      const t0 = Date.now();
+      await context.bench(8, 4, 1, 1);
+      const tHeat = Date.now() - t0;
       if (tHeat > 1e4) {
-        addLog('Heat up time is too long, please try again.')
-        return
+        addLog('Heat up time is too long, please try again.');
+        return;
       }
-      addLog(`Heat up time: ${tHeat}ms`)
+      addLog(`Heat up time: ${tHeat}ms`);
 
       // Main benchmark
-      addLog('Benchmarking the model...')
+      addLog('Benchmarking the model...');
       const { modelDesc, modelSize, modelNParams, ppAvg, ppStd, tgAvg, tgStd } =
-        await context.bench(512, 128, 1, 3)
+        await context.bench(512, 128, 1, 3);
 
-      const size = `${(modelSize / 1024.0 / 1024.0 / 1024.0).toFixed(2)} GiB`
-      const nParams = `${(modelNParams / 1e9).toFixed(2)}B`
+      const size = `${(modelSize / 1024.0 / 1024.0 / 1024.0).toFixed(2)} GiB`;
+      const nParams = `${(modelNParams / 1e9).toFixed(2)}B`;
       const md =
         '| model | size | params | test | t/s |\n' +
         '| --- | --- | --- | --- | --- |\n' +
@@ -301,20 +301,20 @@ export default function BenchScreen({ navigation }: { navigation: any }) {
         )} ± ${ppStd.toFixed(2)} |\n` +
         `| ${modelDesc} | ${size} | ${nParams} | tg 128 | ${tgAvg.toFixed(
           2,
-        )} ± ${tgStd.toFixed(2)} |`
+        )} ± ${tgStd.toFixed(2)} |`;
 
-      addLog('')
-      addLog('📊 Benchmark Results:')
-      addLog(md)
-      addLog('')
-      addLog('✅ Benchmark completed successfully!')
+      addLog('');
+      addLog('📊 Benchmark Results:');
+      addLog(md);
+      addLog('');
+      addLog('✅ Benchmark completed successfully!');
     } catch (error: any) {
-      addLog(`❌ Benchmark failed: ${error.message}`)
-      Alert.alert('Error', `Benchmark failed: ${error.message}`)
+      addLog(`❌ Benchmark failed: ${error.message}`);
+      Alert.alert('Error', `Benchmark failed: ${error.message}`);
     } finally {
-      setIsBenching(false)
+      setIsBenching(false);
     }
-  }
+  };
 
   if (!isModelReady) {
     return (
@@ -397,7 +397,7 @@ export default function BenchScreen({ navigation }: { navigation: any }) {
           showProgressBar={initProgress > 0}
         />
       </View>
-    )
+    );
   }
 
   return (
@@ -452,5 +452,5 @@ export default function BenchScreen({ navigation }: { navigation: any }) {
         showProgressBar={false}
       />
     </View>
-  )
+  );
 }

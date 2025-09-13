@@ -19,14 +19,14 @@ export interface CustomModelInfo {
 }
 
 export class HuggingFaceAPI {
-  private static readonly baseUrl = 'https://huggingface.co/api/models'
+  private static readonly baseUrl = 'https://huggingface.co/api/models';
 
   /**
    * Fetch model information from HuggingFace Hub API
    */
   static async fetchModelInfo(modelId: string): Promise<CustomModelInfo> {
     try {
-      const response = await fetch(`${this.baseUrl}/${modelId}`)
+      const response = await fetch(`${this.baseUrl}/${modelId}`);
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -36,12 +36,12 @@ export class HuggingFaceAPI {
             files: [],
             mmprojFiles: [],
             error: 'Model not found on HuggingFace Hub',
-          }
+          };
         }
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const model: HuggingFaceModel = await response.json()
+      const model: HuggingFaceModel = await response.json();
 
       // Extract GGUF files
       const ggufFiles = model.siblings
@@ -49,32 +49,32 @@ export class HuggingFaceAPI {
         .map((sibling) => ({
           filename: sibling.rfilename,
           quantization: this.extractQuantization(sibling.rfilename),
-        }))
+        }));
 
       // Separate regular model files from mmproj files
       const files = ggufFiles.filter(
         (file) => !file.filename.startsWith('mmproj-'),
-      )
+      );
       const mmprojFiles = ggufFiles.filter((file) =>
         file.filename.startsWith('mmproj-'),
-      )
+      );
 
       // Sort files by quantization priority
       files.sort((a, b) =>
         this.compareQuantizations(a.quantization, b.quantization),
-      )
+      );
       mmprojFiles.sort((a, b) =>
         this.compareQuantizations(a.quantization, b.quantization),
-      )
+      );
 
       return {
         id: modelId,
         exists: true,
         files,
         mmprojFiles,
-      }
+      };
     } catch (error) {
-      console.error('Error fetching model info:', error)
+      console.error('Error fetching model info:', error);
       return {
         id: modelId,
         exists: false,
@@ -82,7 +82,7 @@ export class HuggingFaceAPI {
         mmprojFiles: [],
         error:
           error instanceof Error ? error.message : 'Unknown error occurred',
-      }
+      };
     }
   }
 
@@ -99,13 +99,13 @@ export class HuggingFaceAPI {
       /[_-](mxfp\d+)/i, // MXFP4, MXFP8, etc.
       /[_-](f\d+)/i, // F16, F32
       /[_-](bf\d+)/i, // BF16
-    ]
+    ];
 
     const match = patterns
       .map((pattern) => filename.match(pattern))
-      .find((result) => result && result[1])
+      .find((result) => result && result[1]);
 
-    return match && match[1] ? match[1].toUpperCase() : 'UNKNOWN'
+    return match && match[1] ? match[1].toUpperCase() : 'UNKNOWN';
   }
 
   /**
@@ -139,41 +139,41 @@ export class HuggingFaceAPI {
       'F16',
       'F32',
       'BF16',
-    ]
+    ];
 
-    const indexA = priority.indexOf(a)
-    const indexB = priority.indexOf(b)
+    const indexA = priority.indexOf(a);
+    const indexB = priority.indexOf(b);
 
     // If both found, use priority order
     if (indexA !== -1 && indexB !== -1) {
-      return indexA - indexB
+      return indexA - indexB;
     }
 
     // If only one found, prioritize it
-    if (indexA !== -1) return -1
-    if (indexB !== -1) return 1
+    if (indexA !== -1) {return -1;}
+    if (indexB !== -1) {return 1;}
 
     // If neither found, alphabetical order
-    return a.localeCompare(b)
+    return a.localeCompare(b);
   }
 
   /**
    * Get the default quantization file based on priority
    */
   static getDefaultQuantization(files: ModelFile[]): ModelFile | null {
-    if (files.length === 0) return null
+    if (files.length === 0) {return null;}
 
     // Files are already sorted by priority, so return the first one
-    return files[0] || null
+    return files[0] || null;
   }
 
   /**
    * Get the default mmproj file
    */
   static getDefaultMmproj(mmprojFiles: ModelFile[]): ModelFile | null {
-    if (mmprojFiles.length === 0) return null
+    if (mmprojFiles.length === 0) {return null;}
 
     // For mmproj, prefer higher precision quantizations
-    return mmprojFiles[0] || null
+    return mmprojFiles[0] || null;
   }
 }

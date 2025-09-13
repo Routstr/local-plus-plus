@@ -1,4 +1,4 @@
-import { useLayoutEffect } from 'react'
+import { useLayoutEffect } from 'react';
 
 interface NavigationParamsConfig {
   navigation: any
@@ -18,17 +18,17 @@ export function useNavigationParams({
       navigation.setParams({
         showCompletionSettings: onShowCompletionSettings,
         showContextSettings: null,
-      })
+      });
     } else if (!isModelReady && onShowContextSettings) {
       navigation.setParams({
         showContextSettings: onShowContextSettings,
         showCompletionSettings: null,
-      })
+      });
     }
   }, [
     navigation,
     isModelReady,
     onShowContextSettings,
     onShowCompletionSettings,
-  ])
+  ]);
 }

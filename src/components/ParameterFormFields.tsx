@@ -1,4 +1,4 @@
-import React from 'react'
+import React from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,9 @@ import {
   Switch,
   TouchableOpacity,
   StyleSheet,
-} from 'react-native'
-import { createThemedStyles } from '../styles/commonStyles'
-import { useTheme } from '../contexts/ThemeContext'
+} from 'react-native';
+import { createThemedStyles } from '../styles/commonStyles';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface ParameterTextInputProps {
   label: string
@@ -27,8 +27,8 @@ export function ParameterTextInput({
   placeholder,
   keyboardType = 'ascii-capable',
 }: ParameterTextInputProps) {
-  const { theme } = useTheme()
-  const themedStyles = createThemedStyles(theme.colors)
+  const { theme } = useTheme();
+  const themedStyles = createThemedStyles(theme.colors);
 
   return (
     <View style={themedStyles.paramGroup}>
@@ -43,7 +43,7 @@ export function ParameterTextInput({
         placeholderTextColor={theme.colors.textSecondary}
       />
     </View>
-  )
+  );
 }
 
 interface ParameterSwitchProps {
@@ -59,8 +59,8 @@ export function ParameterSwitch({
   value,
   onValueChange,
 }: ParameterSwitchProps) {
-  const { theme } = useTheme()
-  const themedStyles = createThemedStyles(theme.colors)
+  const { theme } = useTheme();
+  const themedStyles = createThemedStyles(theme.colors);
 
   const styles = StyleSheet.create({
     switchRow: {
@@ -72,7 +72,7 @@ export function ParameterSwitch({
       flex: 1,
       marginRight: 12,
     },
-  })
+  });
 
   return (
     <View style={themedStyles.paramGroup}>
@@ -89,7 +89,7 @@ export function ParameterSwitch({
         />
       </View>
     </View>
-  )
+  );
 }
 
 interface StopSequenceFieldProps {
@@ -105,8 +105,8 @@ export function StopSequenceField({
   onRemoveStopSequence,
   onAddStopSequence,
 }: StopSequenceFieldProps) {
-  const { theme } = useTheme()
-  const themedStyles = createThemedStyles(theme.colors)
+  const { theme } = useTheme();
+  const themedStyles = createThemedStyles(theme.colors);
 
   const styles = StyleSheet.create({
     stopSequenceContainer: {
@@ -141,7 +141,7 @@ export function StopSequenceField({
       fontWeight: '500',
       textAlign: 'center',
     },
-  })
+  });
 
   return (
     <View style={themedStyles.paramGroup}>
@@ -177,5 +177,5 @@ export function StopSequenceField({
         <Text style={styles.addButtonText}>Add Stop Sequence</Text>
       </TouchableOpacity>
     </View>
-  )
+  );
 }

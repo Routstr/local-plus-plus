@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,12 @@ import {
   Alert,
   Clipboard,
   Platform,
-} from 'react-native'
-import type { MessageType } from '@flyerhq/react-native-chat-ui'
-import type { LlamaContext } from 'llama.rn'
-import { createThemedStyles } from '../styles/commonStyles'
-import { useTheme } from '../contexts/ThemeContext'
-import type { LLMMessage } from '../utils/llmMessages'
+} from 'react-native';
+import type { MessageType } from '@flyerhq/react-native-chat-ui';
+import type { LlamaContext } from 'llama.rn';
+import { createThemedStyles } from '../styles/commonStyles';
+import { useTheme } from '../contexts/ThemeContext';
+import type { LLMMessage } from '../utils/llmMessages';
 
 interface MessagesModalProps {
   visible: boolean
@@ -38,8 +38,8 @@ const MessagesModal: React.FC<MessagesModalProps> = ({
   onUpdateSystemPrompt,
   defaultSystemPrompt = '',
 }) => {
-  const { theme } = useTheme()
-  const themedStyles = createThemedStyles(theme.colors)
+  const { theme } = useTheme();
+  const themedStyles = createThemedStyles(theme.colors);
 
   const styles = StyleSheet.create({
     container: {
@@ -252,44 +252,44 @@ const MessagesModal: React.FC<MessagesModalProps> = ({
       backgroundColor: theme.colors.border,
       marginVertical: 4,
     },
-  })
+  });
 
-  const [importText, setImportText] = useState('')
-  const [isImporting, setIsImporting] = useState(false)
-  const [systemPrompt, setSystemPrompt] = useState('')
-  const scrollViewRef = useRef<ScrollView>(null)
+  const [importText, setImportText] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+  const [systemPrompt, setSystemPrompt] = useState('');
+  const scrollViewRef = useRef<ScrollView>(null);
 
   // Extract current system prompt from messages
   useEffect(() => {
-    const systemMessage = messages.find(msg => msg.role === 'system')
+    const systemMessage = messages.find(msg => msg.role === 'system');
     if (systemMessage && typeof systemMessage.content === 'string') {
-      setSystemPrompt(systemMessage.content)
+      setSystemPrompt(systemMessage.content);
     } else if (systemMessage && Array.isArray(systemMessage.content)) {
       // Handle multimodal system messages
-      const textContent = systemMessage.content.find(item => item.type === 'text')
+      const textContent = systemMessage.content.find(item => item.type === 'text');
       if (textContent && textContent.text) {
-        setSystemPrompt(textContent.text)
+        setSystemPrompt(textContent.text);
       }
     }
-  }, [messages])
+  }, [messages]);
 
   // Handle real-time system prompt updates
   const handleSystemPromptChange = (text: string) => {
-    setSystemPrompt(text)
+    setSystemPrompt(text);
     if (onUpdateSystemPrompt) {
-      onUpdateSystemPrompt(text)
+      onUpdateSystemPrompt(text);
     }
-  }
+  };
 
   // Handle reset to default system prompt
   const handleResetSystemPrompt = () => {
     if (defaultSystemPrompt) {
-      setSystemPrompt(defaultSystemPrompt)
+      setSystemPrompt(defaultSystemPrompt);
       if (onUpdateSystemPrompt) {
-        onUpdateSystemPrompt(defaultSystemPrompt)
+        onUpdateSystemPrompt(defaultSystemPrompt);
       }
     }
-  }
+  };
 
   // Helper function to omit image base64 from display
   const omitImageBase64ForDisplay = (msgs: LLMMessage[]) =>
@@ -301,31 +301,31 @@ const MessagesModal: React.FC<MessagesModalProps> = ({
             if (item.type === 'image_url' && item.image_url?.url?.startsWith('data:')) {
               return {
                 ...item,
-                image_url: { url: '[Base64 Image Data Omitted]' }
-              }
+                image_url: { url: '[Base64 Image Data Omitted]' },
+              };
             }
-            return item
-          })
-        }
+            return item;
+          }),
+        };
       }
-      return msg
-    })
+      return msg;
+    });
 
   // Helper function to get full messages with base64 for copying
-  const getFullMessagesForCopy = (msgs: LLMMessage[]) => msgs
+  const getFullMessagesForCopy = (msgs: LLMMessage[]) => msgs;
 
   // Helper function to convert LLM messages to chat UI messages
   const convertLLMMessagesToChatMessages = (llmMessages: LLMMessage[]): MessageType.Any[] => {
-    const user = { id: 'user' }
-    const assistant = { id: 'assistant' }
-    const randId = () => Math.random().toString(36).substr(2, 9)
+    const user = { id: 'user' };
+    const assistant = { id: 'assistant' };
+    const randId = () => Math.random().toString(36).substr(2, 9);
 
-    const chatMessages: MessageType.Any[] = []
+    const chatMessages: MessageType.Any[] = [];
 
     llmMessages.forEach((llmMsg) => {
       // Skip system messages - they're not displayed in chat UI
       if (llmMsg.role === 'system') {
-        return
+        return;
       }
 
       // Handle tool messages - convert to assistant messages with metadata
@@ -340,12 +340,12 @@ const MessagesModal: React.FC<MessagesModalProps> = ({
             toolResult: true,
             toolCallId: llmMsg.tool_call_id,
           },
-        }
-        chatMessages.push(toolMessage)
-        return
+        };
+        chatMessages.push(toolMessage);
+        return;
       }
 
-      const author = llmMsg.role === 'user' ? user : assistant
+      const author = llmMsg.role === 'user' ? user : assistant;
 
       // Handle text content
       if (typeof llmMsg.content === 'string') {
@@ -357,10 +357,10 @@ const MessagesModal: React.FC<MessagesModalProps> = ({
           type: 'text',
           metadata: llmMsg.tool_calls ? {
             toolCalls: true,
-            storedToolCalls: llmMsg.tool_calls
+            storedToolCalls: llmMsg.tool_calls,
           } : {},
-        }
-        chatMessages.push(textMessage)
+        };
+        chatMessages.push(textMessage);
       }
       // Handle multimodal content (array of text/image items)
       else if (Array.isArray(llmMsg.content)) {
@@ -374,10 +374,10 @@ const MessagesModal: React.FC<MessagesModalProps> = ({
               type: 'text',
               metadata: llmMsg.tool_calls ? {
                 toolCalls: true,
-                storedToolCalls: llmMsg.tool_calls
+                storedToolCalls: llmMsg.tool_calls,
               } : {},
-            }
-            chatMessages.push(textMessage)
+            };
+            chatMessages.push(textMessage);
           } else if (item.type === 'image_url' && item.image_url?.url) {
             const imageMessage: MessageType.Image = {
               author,
@@ -390,98 +390,98 @@ const MessagesModal: React.FC<MessagesModalProps> = ({
               metadata: {
                 imported: true,
               },
-            }
-            chatMessages.push(imageMessage)
+            };
+            chatMessages.push(imageMessage);
           }
-        })
+        });
       }
-    })
+    });
 
-    return chatMessages
-  }
+    return chatMessages;
+  };
 
-  const displayMessages = omitImageBase64ForDisplay(messages)
-  const jsonContent = JSON.stringify(displayMessages, null, 2)
-  const fullJsonContent = JSON.stringify(getFullMessagesForCopy(messages), null, 2)
+  const displayMessages = omitImageBase64ForDisplay(messages);
+  const jsonContent = JSON.stringify(displayMessages, null, 2);
+  const fullJsonContent = JSON.stringify(getFullMessagesForCopy(messages), null, 2);
 
   const copyToClipboard = async (content: string, type: string) => {
     try {
-      await Clipboard.setString(content)
+      await Clipboard.setString(content);
     } catch (error) {
-      Alert.alert('Error', `Failed to copy ${type}`)
+      Alert.alert('Error', `Failed to copy ${type}`);
     }
-  }
+  };
 
   const handleCopyRawJson = () => {
-    copyToClipboard(fullJsonContent, 'Raw JSON')
-  }
+    copyToClipboard(fullJsonContent, 'Raw JSON');
+  };
 
   const handleCopyFormattedChat = async () => {
     if (!context) {
-      Alert.alert('Error', 'Context not available')
-      return
+      Alert.alert('Error', 'Context not available');
+      return;
     }
 
     try {
       // Try to get formatted chat - the API might expect different input
-      const parsedMessages = JSON.parse(fullJsonContent)
+      const parsedMessages = JSON.parse(fullJsonContent);
       const result = await context.getFormattedChat(parsedMessages, null, {
         jinja: true,
         tools,
         tool_choice: tools ? 'auto' : undefined,
-      })
+      });
       if (result && typeof result === 'object' && 'prompt' in result) {
-        copyToClipboard(result.prompt, 'Formatted chat')
+        copyToClipboard(result.prompt, 'Formatted chat');
       } else {
-        copyToClipboard(String(result), 'Formatted chat')
+        copyToClipboard(String(result), 'Formatted chat');
       }
     } catch (error: any) {
-      Alert.alert('Error', `Failed to format chat: ${error.message}`)
+      Alert.alert('Error', `Failed to format chat: ${error.message}`);
     }
-  }
+  };
 
   const handleImportMessages = async () => {
     if (!importText.trim()) {
-      Alert.alert('Error', 'Please enter JSON content to import')
-      return
+      Alert.alert('Error', 'Please enter JSON content to import');
+      return;
     }
 
     if (!context) {
-      Alert.alert('Error', 'Context not available for validation')
-      return
+      Alert.alert('Error', 'Context not available for validation');
+      return;
     }
 
-    setIsImporting(true)
+    setIsImporting(true);
     try {
       // Parse JSON
-      const parsedMessages = JSON.parse(importText.trim())
+      const parsedMessages = JSON.parse(importText.trim());
 
       // Validate with context - simplified validation
       if (Array.isArray(parsedMessages)) {
-        await context.getFormattedChat(parsedMessages)
+        await context.getFormattedChat(parsedMessages);
       } else {
-        throw new TypeError('Messages must be an array')
+        throw new TypeError('Messages must be an array');
       }
 
       // If validation passes, convert and import the messages
       if (onImportMessages) {
-        const chatMessages = convertLLMMessagesToChatMessages(parsedMessages)
-        onImportMessages(chatMessages)
-        setImportText('')
-        onClose()
+        const chatMessages = convertLLMMessagesToChatMessages(parsedMessages);
+        onImportMessages(chatMessages);
+        setImportText('');
+        onClose();
       }
     } catch (error: any) {
       if (error.message.includes('JSON')) {
-        Alert.alert('Error', 'Invalid JSON format')
+        Alert.alert('Error', 'Invalid JSON format');
       } else {
-        Alert.alert('Error', `Validation failed: ${error.message}`)
+        Alert.alert('Error', `Validation failed: ${error.message}`);
       }
     } finally {
-      setIsImporting(false)
+      setIsImporting(false);
     }
-  }
+  };
 
-  const [textAreaFocused, setTextAreaFocused] = useState(false)
+  const [textAreaFocused, setTextAreaFocused] = useState(false);
 
   return (
     <Modal
@@ -583,7 +583,7 @@ const MessagesModal: React.FC<MessagesModalProps> = ({
             <TextInput
               style={[
                 styles.textArea,
-                textAreaFocused && styles.textAreaFocused
+                textAreaFocused && styles.textAreaFocused,
               ]}
               placeholder="Paste JSON messages here..."
               placeholderTextColor={theme.colors.textSecondary}
@@ -617,7 +617,7 @@ const MessagesModal: React.FC<MessagesModalProps> = ({
         </ScrollView>
       </View>
     </Modal>
-  )
-}
+  );
+};
 
-export { MessagesModal }
+export { MessagesModal };

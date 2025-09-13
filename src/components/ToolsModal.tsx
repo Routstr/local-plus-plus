@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Modal,
   View,
@@ -9,13 +9,13 @@ import {
   TextInput,
   Alert,
   Platform,
-} from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { createThemedStyles } from '../styles/commonStyles'
-import { useTheme } from '../contexts/ThemeContext'
-import type { MCPConfig } from '../utils/storage'
-import { loadMCPConfig, saveMCPConfig } from '../utils/storage'
-import { mcpClientManager, type MCPConnection } from '../utils/mcpClient'
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { createThemedStyles } from '../styles/commonStyles';
+import { useTheme } from '../contexts/ThemeContext';
+import type { MCPConfig } from '../utils/storage';
+import { loadMCPConfig, saveMCPConfig } from '../utils/storage';
+import { mcpClientManager, type MCPConnection } from '../utils/mcpClient';
 
 interface OpenAITool {
   type: string
@@ -55,8 +55,8 @@ function convertOpenAIToAnthropic(openAITools: OpenAITool[]): AnthropicTool[] {
       name: tool.function.name,
       description: tool.function.description,
       input_schema: tool.function.parameters,
-      ...(tool.mock_response && { mock_response: tool.mock_response })
-    }))
+      ...(tool.mock_response && { mock_response: tool.mock_response }),
+    }));
 }
 
 function convertAnthropicToOpenAI(anthropicTools: AnthropicTool[]): OpenAITool[] {
@@ -65,52 +65,52 @@ function convertAnthropicToOpenAI(anthropicTools: AnthropicTool[]): OpenAITool[]
     function: {
       name: tool.name,
       description: tool.description,
-      parameters: tool.input_schema
+      parameters: tool.input_schema,
     },
-    ...(tool.mock_response && { mock_response: tool.mock_response })
-  }))
+    ...(tool.mock_response && { mock_response: tool.mock_response }),
+  }));
 }
 
 function detectSchemaFormat(tools: any[]): 'openai' | 'anthropic' | 'unknown' {
-  if (tools.length === 0) return 'openai' // default
+  if (tools.length === 0) {return 'openai';} // default
 
-  const firstTool = tools[0]
+  const firstTool = tools[0];
   if (firstTool.type === 'function' && firstTool.function) {
-    return 'openai'
+    return 'openai';
   }
   if (firstTool.name && firstTool.description && firstTool.input_schema) {
-    return 'anthropic'
+    return 'anthropic';
   }
-  return 'unknown'
+  return 'unknown';
 }
 
 function getToolName(tool: Tool): string {
   if ('function' in tool) {
-    return tool.function.name
+    return tool.function.name;
   }
-  return tool.name
+  return tool.name;
 }
 
 function getToolDescription(tool: Tool): string {
   if ('function' in tool) {
-    return tool.function.description
+    return tool.function.description;
   }
-  return tool.description
+  return tool.description;
 }
 
 function extractMockResponsesFromTools(tools: any[]): Record<string, string> {
-  const mockResponses: Record<string, string> = {}
+  const mockResponses: Record<string, string> = {};
 
   tools.forEach(tool => {
-    const toolName = getToolName(tool)
-    const mockResponse = tool.mock_response || (tool.function && tool.function.mock_response)
+    const toolName = getToolName(tool);
+    const mockResponse = tool.mock_response || (tool.function && tool.function.mock_response);
 
     if (mockResponse) {
-      mockResponses[toolName] = mockResponse
+      mockResponses[toolName] = mockResponse;
     }
-  })
+  });
 
-  return mockResponses
+  return mockResponses;
 }
 
 export default function ToolsModal({
@@ -123,16 +123,16 @@ export default function ToolsModal({
   disabledTools = new Set(),
   onDisabledToolsChange,
 }: ToolsModalProps) {
-  const { theme } = useTheme()
-  const themedStyles = createThemedStyles(theme.colors)
+  const { theme } = useTheme();
+  const themedStyles = createThemedStyles(theme.colors);
 
   // Tab and MCP state
-  const [activeTab, setActiveTab] = useState<'custom' | 'mcp'>('custom')
-  const [mcpConfigJson, setMcpConfigJson] = useState('')
-  const [mcpConfig, setMcpConfig] = useState<MCPConfig>({ mcpServers: {} })
-  const [mcpError, setMcpError] = useState('')
-  const [mcpConnections, setMcpConnections] = useState<MCPConnection[]>([])
-  const [mcpConnecting, setMcpConnecting] = useState(false)
+  const [activeTab, setActiveTab] = useState<'custom' | 'mcp'>('custom');
+  const [mcpConfigJson, setMcpConfigJson] = useState('');
+  const [mcpConfig, setMcpConfig] = useState<MCPConfig>({ mcpServers: {} });
+  const [mcpError, setMcpError] = useState('');
+  const [mcpConnections, setMcpConnections] = useState<MCPConnection[]>([]);
+  const [mcpConnecting, setMcpConnecting] = useState(false);
 
   const styles = StyleSheet.create({
     container: themedStyles.container,
@@ -423,114 +423,114 @@ export default function ToolsModal({
     connectButtonDisabled: {
       backgroundColor: theme.colors.textSecondary,
     },
-  })
-  const [toolsJson, setToolsJson] = useState('')
+  });
+  const [toolsJson, setToolsJson] = useState('');
   const [currentMockResponses, setCurrentMockResponses] = useState<
     Record<string, string>
-  >({})
-  const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [currentFormat, setCurrentFormat] = useState<'openai' | 'anthropic'>('openai')
+  >({});
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentFormat, setCurrentFormat] = useState<'openai' | 'anthropic'>('openai');
 
   const updateToolsDisplay = useCallback(() => {
     const displayTools = currentFormat === 'anthropic'
       ? convertOpenAIToAnthropic(tools)
-      : tools
-    setToolsJson(JSON.stringify(displayTools, null, 2))
-  }, [currentFormat, tools])
+      : tools;
+    setToolsJson(JSON.stringify(displayTools, null, 2));
+  }, [currentFormat, tools]);
 
   const autoFillEmptyMockResponses = useCallback((parsedTools: any[]) => {
-    const extractedMockResponses = extractMockResponsesFromTools(parsedTools)
+    const extractedMockResponses = extractMockResponsesFromTools(parsedTools);
 
     if (Object.keys(extractedMockResponses).length > 0) {
       setCurrentMockResponses(prev => {
-        const updated = { ...prev }
+        const updated = { ...prev };
         // Only fill if the field is empty
         Object.entries(extractedMockResponses).forEach(([toolName, mockResponse]) => {
           if (!updated[toolName] || updated[toolName]?.trim() === '') {
-            updated[toolName] = mockResponse
+            updated[toolName] = mockResponse;
           }
-        })
-        return updated
-      })
+        });
+        return updated;
+      });
     }
-  }, [])
+  }, []);
 
   const connectToMCPServers = useCallback(async (config: MCPConfig) => {
-    setMcpConnecting(true)
-    setMcpError('')
+    setMcpConnecting(true);
+    setMcpError('');
 
     try {
-      mcpClientManager.updateConfig(config)
-      await mcpClientManager.connectToServers()
-      setMcpConnections(mcpClientManager.getConnections())
+      mcpClientManager.updateConfig(config);
+      await mcpClientManager.connectToServers();
+      setMcpConnections(mcpClientManager.getConnections());
     } catch (err: any) {
-      setMcpError(`Failed to connect to MCP servers: ${err.message}`)
+      setMcpError(`Failed to connect to MCP servers: ${err.message}`);
     } finally {
-      setMcpConnecting(false)
+      setMcpConnecting(false);
     }
-  }, [])
+  }, []);
 
   const loadMCPConfiguration = useCallback(async () => {
     try {
-      const config = await loadMCPConfig()
-      setMcpConfig(config)
-      setMcpConfigJson(JSON.stringify(config, null, 2))
-      setMcpError('')
+      const config = await loadMCPConfig();
+      setMcpConfig(config);
+      setMcpConfigJson(JSON.stringify(config, null, 2));
+      setMcpError('');
     } catch (err: any) {
-      setMcpError(`Failed to load MCP config: ${err.message}`)
+      setMcpError(`Failed to load MCP config: ${err.message}`);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
     if (visible) {
-      updateToolsDisplay()
-      setCurrentMockResponses(mockResponses)
-      setError('')
+      updateToolsDisplay();
+      setCurrentMockResponses(mockResponses);
+      setError('');
 
       // Load MCP configuration
-      loadMCPConfiguration()
+      loadMCPConfiguration();
 
       // Auto-fill mock responses from tools schema
       try {
         const displayTools = currentFormat === 'anthropic'
           ? convertOpenAIToAnthropic(tools)
-          : tools
-        autoFillEmptyMockResponses(displayTools)
+          : tools;
+        autoFillEmptyMockResponses(displayTools);
       } catch (e) {
         // Ignore JSON parsing errors
       }
     }
-  }, [updateToolsDisplay, visible, tools, mockResponses, currentFormat, autoFillEmptyMockResponses, loadMCPConfiguration])
+  }, [updateToolsDisplay, visible, tools, mockResponses, currentFormat, autoFillEmptyMockResponses, loadMCPConfiguration]);
 
   const handleCustomToolsSave = () => {
-    setIsLoading(true)
-    setError('')
+    setIsLoading(true);
+    setError('');
 
     try {
-      const parsedTools = JSON.parse(toolsJson)
+      const parsedTools = JSON.parse(toolsJson);
 
       // Validate the structure
       if (!Array.isArray(parsedTools)) {
-        throw new TypeError('Tools must be an array')
+        throw new TypeError('Tools must be an array');
       }
 
       // Convert to OpenAI format for saving (since the app expects OpenAI format)
-      let toolsToSave: OpenAITool[]
-      const detectedFormat = detectSchemaFormat(parsedTools)
+      let toolsToSave: OpenAITool[];
+      const detectedFormat = detectSchemaFormat(parsedTools);
 
       if (detectedFormat === 'anthropic') {
-        toolsToSave = convertAnthropicToOpenAI(parsedTools)
+        toolsToSave = convertAnthropicToOpenAI(parsedTools);
       } else if (detectedFormat === 'openai') {
-        toolsToSave = parsedTools
+        toolsToSave = parsedTools;
       } else {
-        throw new TypeError('Invalid tool schema format')
+        throw new TypeError('Invalid tool schema format');
       }
 
       // Validate OpenAI format
       toolsToSave.forEach((tool) => {
         if (!tool.type || tool.type !== 'function') {
-          throw new TypeError('Each tool must have type: "function"')
+          throw new TypeError('Each tool must have type: "function"');
         }
         if (
           !tool.function ||
@@ -539,73 +539,73 @@ export default function ToolsModal({
         ) {
           throw new TypeError(
             'Each tool must have function.name and function.description',
-          )
+          );
         }
         if (!tool.function.parameters) {
-          throw new TypeError('Each tool must have function.parameters')
+          throw new TypeError('Each tool must have function.parameters');
         }
-      })
+      });
 
-      onSave(toolsToSave, currentMockResponses)
-      onClose()
+      onSave(toolsToSave, currentMockResponses);
+      onClose();
     } catch (parseErr: any) {
-      setError(`Invalid JSON: ${parseErr.message}`)
+      setError(`Invalid JSON: ${parseErr.message}`);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleMCPSave = useCallback(async () => {
-    setIsLoading(true)
-    setMcpError('')
+    setIsLoading(true);
+    setMcpError('');
 
     try {
-      const parsedConfig = JSON.parse(mcpConfigJson)
+      const parsedConfig = JSON.parse(mcpConfigJson);
 
       // Basic validation
       if (!parsedConfig.mcpServers || typeof parsedConfig.mcpServers !== 'object') {
-        throw new TypeError('Config must have mcpServers object')
+        throw new TypeError('Config must have mcpServers object');
       }
 
       // Validate server configurations
       Object.entries(parsedConfig.mcpServers).forEach(([name, server]: [string, any]) => {
         if (!server.type || !server.url) {
-          throw new TypeError(`Server "${name}" must have type and url`)
+          throw new TypeError(`Server "${name}" must have type and url`);
         }
         if (!['streamable-http', 'sse'].includes(server.type)) {
-          throw new TypeError(`Server "${name}" type must be "streamable-http" or "sse"`)
+          throw new TypeError(`Server "${name}" type must be "streamable-http" or "sse"`);
         }
-      })
+      });
 
-      await saveMCPConfig(parsedConfig)
-      setMcpConfig(parsedConfig)
+      await saveMCPConfig(parsedConfig);
+      setMcpConfig(parsedConfig);
 
       if (onMCPConfigSave) {
-        onMCPConfigSave(parsedConfig)
+        onMCPConfigSave(parsedConfig);
       }
 
       // Don't close modal
     } catch (parseErr: any) {
-      setMcpError(`Invalid MCP config: ${parseErr.message}`)
+      setMcpError(`Invalid MCP config: ${parseErr.message}`);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [onMCPConfigSave, mcpConfigJson])
+  }, [onMCPConfigSave, mcpConfigJson]);
 
   const handleSave = () => {
     if (activeTab === 'custom') {
-      handleCustomToolsSave()
+      handleCustomToolsSave();
     } else {
-      handleMCPSave()
+      handleMCPSave();
     }
-  }
+  };
 
 
   const handleReset = () => {
-    const resetTitle = activeTab === 'custom' ? 'Reset Tools' : 'Reset MCP Config'
+    const resetTitle = activeTab === 'custom' ? 'Reset Tools' : 'Reset MCP Config';
     const resetMessage = activeTab === 'custom'
       ? 'Are you sure you want to reset to default tools? This will lose all custom changes.'
-      : 'Are you sure you want to reset MCP configuration? This will lose all MCP server settings.'
+      : 'Are you sure you want to reset MCP configuration? This will lose all MCP server settings.';
 
     Alert.alert(
       resetTitle,
@@ -620,21 +620,21 @@ export default function ToolsModal({
           style: 'destructive',
           onPress: () => {
             if (activeTab === 'custom') {
-              setCurrentFormat('openai')
-              updateToolsDisplay()
-              setCurrentMockResponses(mockResponses)
-              setError('')
+              setCurrentFormat('openai');
+              updateToolsDisplay();
+              setCurrentMockResponses(mockResponses);
+              setError('');
             } else {
-              const defaultConfig = { mcpServers: {} }
-              setMcpConfig(defaultConfig)
-              setMcpConfigJson(JSON.stringify(defaultConfig, null, 2))
-              setMcpError('')
+              const defaultConfig = { mcpServers: {} };
+              setMcpConfig(defaultConfig);
+              setMcpConfigJson(JSON.stringify(defaultConfig, null, 2));
+              setMcpError('');
             }
           },
         },
       ],
-    )
-  }
+    );
+  };
 
   return (
     <Modal
@@ -702,8 +702,8 @@ export default function ToolsModal({
                 style={styles.textArea}
                 value={toolsJson}
                 onChangeText={(text) => {
-                  setToolsJson(text)
-                  setError('')
+                  setToolsJson(text);
+                  setError('');
                 }}
                 multiline
                 placeholder="Enter tools JSON schema..."
@@ -714,8 +714,8 @@ export default function ToolsModal({
                 style={styles.autoFillSchemaButton}
                 onPress={() => {
                   try {
-                    const parsedTools = JSON.parse(toolsJson)
-                    autoFillEmptyMockResponses(parsedTools)
+                    const parsedTools = JSON.parse(toolsJson);
+                    autoFillEmptyMockResponses(parsedTools);
                   } catch (e) {
                     // Invalid JSON - ignore
                   }
@@ -735,8 +735,8 @@ export default function ToolsModal({
                   style={styles.textArea}
                   value={mcpConfigJson}
                   onChangeText={(text) => {
-                    setMcpConfigJson(text)
-                    setMcpError('')
+                    setMcpConfigJson(text);
+                    setMcpError('');
                   }}
                   multiline
                   placeholder={`{
@@ -758,7 +758,7 @@ export default function ToolsModal({
                   <TouchableOpacity
                     style={[styles.connectButton, (mcpConnecting || isLoading) && styles.connectButtonDisabled]}
                     onPress={() => {
-                      connectToMCPServers(mcpConfig)
+                      connectToMCPServers(mcpConfig);
                     }}
                     disabled={mcpConnecting || isLoading}
                   >
@@ -783,9 +783,9 @@ export default function ToolsModal({
                           ]}
                         >
                           {(() => {
-                            if (connection.connected) return 'Connected'
-                            if (connection.error) return 'Error'
-                            return 'Disconnected'
+                            if (connection.connected) {return 'Connected';}
+                            if (connection.error) {return 'Error';}
+                            return 'Disconnected';
                           })()}
                         </Text>
                       </View>
@@ -810,20 +810,20 @@ export default function ToolsModal({
                         <View style={styles.toolsList}>
                           <Text style={styles.mockResponseLabel}>Available Tools:</Text>
                           {connection.tools.map((tool) => {
-                            const isDisabled = disabledTools.has(tool.name)
+                            const isDisabled = disabledTools.has(tool.name);
                             return (
                               <TouchableOpacity
                                 key={tool.name}
                                 style={[styles.toolItem, isDisabled && styles.toolItemDisabled]}
                                 onPress={() => {
                                   if (onDisabledToolsChange) {
-                                    const newDisabledTools = new Set(disabledTools)
+                                    const newDisabledTools = new Set(disabledTools);
                                     if (isDisabled) {
-                                      newDisabledTools.delete(tool.name)
+                                      newDisabledTools.delete(tool.name);
                                     } else {
-                                      newDisabledTools.add(tool.name)
+                                      newDisabledTools.add(tool.name);
                                     }
-                                    onDisabledToolsChange(newDisabledTools)
+                                    onDisabledToolsChange(newDisabledTools);
                                   }
                                 }}
                               >
@@ -833,7 +833,7 @@ export default function ToolsModal({
                                 </Text>
                                 <Text style={styles.toolItemDescription}>{tool.description}</Text>
                               </TouchableOpacity>
-                            )
+                            );
                           })}
                         </View>
                       )}
@@ -849,10 +849,10 @@ export default function ToolsModal({
               <Text style={styles.sectionTitle}>Mock Responses</Text>
               {(() => {
                 try {
-                  const parsedTools = JSON.parse(toolsJson)
+                  const parsedTools = JSON.parse(toolsJson);
                   return parsedTools.map((tool: any, index: number) => {
-                    const toolName = getToolName(tool)
-                    const toolDescription = getToolDescription(tool)
+                    const toolName = getToolName(tool);
+                    const toolDescription = getToolDescription(tool);
 
                     return (
                       <View
@@ -871,7 +871,7 @@ export default function ToolsModal({
                             setCurrentMockResponses((prev) => ({
                               ...prev,
                               [toolName]: text,
-                            }))
+                            }));
                           }}
                           multiline
                           placeholder={`Enter mock response for ${toolName}...`}
@@ -879,14 +879,14 @@ export default function ToolsModal({
                           keyboardType="ascii-capable"
                         />
                       </View>
-                    )
-                  })
+                    );
+                  });
                 } catch (e: any) {
                   return (
                     <Text style={styles.errorText}>
                       {`Invalid JSON (${e.message}) - fix tools JSON below to see mock response inputs`}
                     </Text>
-                  )
+                  );
                 }
               })()}
             </View>
@@ -905,5 +905,5 @@ export default function ToolsModal({
         </ScrollView>
       </SafeAreaView>
     </Modal>
-  )
+  );
 }

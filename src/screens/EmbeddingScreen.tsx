@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect } from 'react'
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -9,17 +9,17 @@ import {
   TextInput,
   FlatList,
   ActivityIndicator,
-} from 'react-native'
-import ModelDownloadCard from '../components/ModelDownloadCard'
-import ContextParamsModal from '../components/ContextParamsModal'
-import { MaskedProgress } from '../components/MaskedProgress'
-import { HeaderButton } from '../components/HeaderButton'
-import { createThemedStyles, Spacing, FontSizes } from '../styles/commonStyles'
-import { useTheme } from '../contexts/ThemeContext'
-import { MODELS } from '../utils/constants'
-import type { ContextParams } from '../utils/storage'
-import { loadContextParams } from '../utils/storage'
-import { initLlama, LlamaContext } from 'llama.rn'
+} from 'react-native';
+import ModelDownloadCard from '../components/ModelDownloadCard';
+import ContextParamsModal from '../components/ContextParamsModal';
+import { MaskedProgress } from '../components/MaskedProgress';
+import { HeaderButton } from '../components/HeaderButton';
+import { createThemedStyles, Spacing, FontSizes } from '../styles/commonStyles';
+import { useTheme } from '../contexts/ThemeContext';
+import { MODELS } from '../utils/constants';
+import type { ContextParams } from '../utils/storage';
+import { loadContextParams } from '../utils/storage';
+import { initLlama, LlamaContext } from 'llama.rn';
 
 interface EmbeddingData {
   id: string
@@ -34,30 +34,30 @@ interface SearchResult {
 }
 
 const calculateCosineSimilarity = (vecA: number[], vecB: number[]): number => {
-  if (vecA.length !== vecB.length) return 0
+  if (vecA.length !== vecB.length) {return 0;}
 
-  let dotProduct = 0
-  let normA = 0
-  let normB = 0
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
 
   for (let i = 0; i < vecA.length; i += 1) {
-    const a = vecA[i] || 0
-    const b = vecB[i] || 0
-    dotProduct += a * b
-    normA += a * a
-    normB += b * b
+    const a = vecA[i] || 0;
+    const b = vecB[i] || 0;
+    dotProduct += a * b;
+    normA += a * a;
+    normB += b * b;
   }
 
-  const normProduct = Math.sqrt(normA) * Math.sqrt(normB)
-  return normProduct === 0 ? 0 : dotProduct / normProduct
-}
+  const normProduct = Math.sqrt(normA) * Math.sqrt(normB);
+  return normProduct === 0 ? 0 : dotProduct / normProduct;
+};
 
 const availableModels = Object.keys(MODELS)
   .map((key) => ({
     key,
     ...MODELS[key as keyof typeof MODELS],
   }))
-  .filter((model) => (model as any).embedding)
+  .filter((model) => (model as any).embedding);
 
 const EXAMPLE_TEXTS = [
   'Artificial intelligence is transforming the way we work and live by automating complex tasks and providing intelligent insights.',
@@ -65,11 +65,11 @@ const EXAMPLE_TEXTS = [
   'Machine learning algorithms can process vast amounts of data to identify patterns and make predictions with remarkable accuracy.',
   'Renewable energy sources like solar and wind power are becoming increasingly cost-effective alternatives to fossil fuels.',
   'The human brain contains approximately 86 billion neurons that communicate through trillions of synaptic connections.',
-]
+];
 
 const EmbeddingScreen = ({ navigation }: { navigation: any }) => {
-  const { theme } = useTheme()
-  const themedStyles = createThemedStyles(theme.colors)
+  const { theme } = useTheme();
+  const themedStyles = createThemedStyles(theme.colors);
 
   const styles = StyleSheet.create({
     container: themedStyles.container,
@@ -188,33 +188,33 @@ const EmbeddingScreen = ({ navigation }: { navigation: any }) => {
       fontSize: FontSizes.medium,
       fontWeight: '500',
     },
-  })
-  const [context, setContext] = useState<LlamaContext | null>(null)
-  const [embeddings, setEmbeddings] = useState<EmbeddingData[]>([])
-  const [inputText, setInputText] = useState('')
-  const [queryText, setQueryText] = useState('')
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
-  const [isEmbedding, setIsEmbedding] = useState(false)
-  const [isSearching, setIsSearching] = useState(false)
-  const [isImporting, setIsImporting] = useState(false)
-  const [isModelReady, setIsModelReady] = useState(false)
-  const [initProgress, setInitProgress] = useState(0)
+  });
+  const [context, setContext] = useState<LlamaContext | null>(null);
+  const [embeddings, setEmbeddings] = useState<EmbeddingData[]>([]);
+  const [inputText, setInputText] = useState('');
+  const [queryText, setQueryText] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isEmbedding, setIsEmbedding] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [isModelReady, setIsModelReady] = useState(false);
+  const [initProgress, setInitProgress] = useState(0);
 
   // Setup and navigation
-  const [contextParams, setContextParams] = useState<ContextParams | null>(null)
-  const [showContextParamsModal, setShowContextParamsModal] = useState(false)
+  const [contextParams, setContextParams] = useState<ContextParams | null>(null);
+  const [showContextParamsModal, setShowContextParamsModal] = useState(false);
 
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const ctxParams = await loadContextParams()
-        setContextParams(ctxParams)
+        const ctxParams = await loadContextParams();
+        setContextParams(ctxParams);
       } catch (error) {
-        console.error('Failed to load initial data:', error)
+        console.error('Failed to load initial data:', error);
       }
-    }
-    loadInitialData()
-  }, [])
+    };
+    loadInitialData();
+  }, []);
 
   useLayoutEffect(() => {
     if (!isModelReady) {
@@ -225,97 +225,97 @@ const EmbeddingScreen = ({ navigation }: { navigation: any }) => {
             onPress={() => setShowContextParamsModal(true)}
           />
         ),
-      })
+      });
     } else {
-      navigation.setOptions({ headerRight: () => null })
+      navigation.setOptions({ headerRight: () => null });
     }
-  }, [navigation, isModelReady])
+  }, [navigation, isModelReady]);
 
   const handleReleaseContext = async () => {
     if (context) {
       try {
-        await context.release()
-        setContext(null)
-        setEmbeddings([])
-        setSearchResults([])
+        await context.release();
+        setContext(null);
+        setEmbeddings([]);
+        setSearchResults([]);
       } catch (error) {
-        console.error('Context release error:', error)
+        console.error('Context release error:', error);
       }
     }
-  }
+  };
 
   const handleInitializeModel = async (modelConfig: any) => {
     if (context) {
-      await handleReleaseContext()
+      await handleReleaseContext();
     }
 
-    setIsModelReady(false)
-    setInitProgress(0)
+    setIsModelReady(false);
+    setInitProgress(0);
 
     try {
       const newContext = await initLlama(modelConfig, (progress) =>
         setInitProgress(progress),
-      )
-      setContext(newContext)
-      setIsModelReady(true)
-      setInitProgress(100)
+      );
+      setContext(newContext);
+      setIsModelReady(true);
+      setInitProgress(100);
     } catch (error) {
-      console.error('Model initialization error:', error)
-      setIsModelReady(false)
-      setInitProgress(0)
-      Alert.alert('Error', `Failed to load model: ${error}`)
+      console.error('Model initialization error:', error);
+      setIsModelReady(false);
+      setInitProgress(0);
+      Alert.alert('Error', `Failed to load model: ${error}`);
     }
-  }
+  };
 
   const handleAddEmbedding = async () => {
-    if (!context || !inputText.trim()) return
+    if (!context || !inputText.trim()) {return;}
 
-    setIsEmbedding(true)
+    setIsEmbedding(true);
     try {
-      const result = await context.embedding(inputText.trim())
+      const result = await context.embedding(inputText.trim());
       const newEmbedding: EmbeddingData = {
         id: Date.now().toString() + Math.random().toString(36).substring(2, 11),
         text: inputText.trim(),
         embedding: result.embedding,
-      }
+      };
 
-      setEmbeddings((prev) => [...prev, newEmbedding])
-      setInputText('')
-      Alert.alert('Success', 'Text embedded and added to memory!')
+      setEmbeddings((prev) => [...prev, newEmbedding]);
+      setInputText('');
+      Alert.alert('Success', 'Text embedded and added to memory!');
     } catch (error) {
-      console.error('Embedding error:', error)
-      Alert.alert('Error', `Failed to create embedding: ${error}`)
+      console.error('Embedding error:', error);
+      Alert.alert('Error', `Failed to create embedding: ${error}`);
     } finally {
-      setIsEmbedding(false)
+      setIsEmbedding(false);
     }
-  }
+  };
 
   const handleSearch = async () => {
-    if (!context || !queryText.trim() || embeddings.length === 0) return
+    if (!context || !queryText.trim() || embeddings.length === 0) {return;}
 
-    setIsSearching(true)
+    setIsSearching(true);
     try {
-      const queryResult = await context.embedding(queryText.trim())
-      const queryEmbedding = queryResult.embedding
+      const queryResult = await context.embedding(queryText.trim());
+      const queryEmbedding = queryResult.embedding;
 
       const similarities = embeddings.map((item) => ({
         id: item.id,
         text: item.text,
         similarity: calculateCosineSimilarity(queryEmbedding, item.embedding),
-      }))
+      }));
 
       const topResults = similarities
         .sort((a, b) => b.similarity - a.similarity)
-        .slice(0, 3)
+        .slice(0, 3);
 
-      setSearchResults(topResults)
+      setSearchResults(topResults);
     } catch (error) {
-      console.error('Search error:', error)
-      Alert.alert('Error', `Search failed: ${error}`)
+      console.error('Search error:', error);
+      Alert.alert('Error', `Search failed: ${error}`);
     } finally {
-      setIsSearching(false)
+      setIsSearching(false);
     }
-  }
+  };
 
   const clearEmbeddings = () => {
     Alert.alert('Clear All', 'Are you sure you want to clear all embeddings?', [
@@ -324,22 +324,22 @@ const EmbeddingScreen = ({ navigation }: { navigation: any }) => {
         text: 'Clear',
         style: 'destructive',
         onPress: () => {
-          setEmbeddings([])
-          setSearchResults([])
+          setEmbeddings([]);
+          setSearchResults([]);
         },
       },
-    ])
-  }
+    ]);
+  };
 
   const handleImportExamples = async () => {
-    if (!context) return
+    if (!context) {return;}
 
-    setIsImporting(true)
+    setIsImporting(true);
     try {
       const newEmbeddings = await EXAMPLE_TEXTS.reduce(
         async (acc: Promise<EmbeddingData[]>, exampleText) => {
-          const embds = await acc
-          const result = await context.embedding(exampleText)
+          const embds = await acc;
+          const result = await context.embedding(exampleText);
           return [
             ...embds,
             {
@@ -349,22 +349,22 @@ const EmbeddingScreen = ({ navigation }: { navigation: any }) => {
               text: exampleText,
               embedding: result.embedding,
             },
-          ]
+          ];
         },
         Promise.resolve([]),
-      )
-      setEmbeddings((prev) => [...prev, ...newEmbeddings])
+      );
+      setEmbeddings((prev) => [...prev, ...newEmbeddings]);
       Alert.alert(
         'Success',
         `Imported ${EXAMPLE_TEXTS.length} example texts to the database!`,
-      )
+      );
     } catch (error) {
-      console.error('Import examples error:', error)
-      Alert.alert('Error', `Failed to import examples: ${error}`)
+      console.error('Import examples error:', error);
+      Alert.alert('Error', `Failed to import examples: ${error}`);
     } finally {
-      setIsImporting(false)
+      setIsImporting(false);
     }
-  }
+  };
 
   const renderEmbeddingItem = ({ item }: { item: EmbeddingData }) => (
     <View style={styles.embeddingItem}>
@@ -375,7 +375,7 @@ const EmbeddingScreen = ({ navigation }: { navigation: any }) => {
         {`Dimension: ${item.embedding.length}`}
       </Text>
     </View>
-  )
+  );
 
   const renderSearchResult = ({
     item,
@@ -384,9 +384,9 @@ const EmbeddingScreen = ({ navigation }: { navigation: any }) => {
     item: SearchResult
     index: number
   }) => {
-    let backgroundColor = theme.colors.card
+    let backgroundColor = theme.colors.card;
     if (index < 3) {
-      backgroundColor = theme.dark ? '#1a365d' : '#f0f8ff'
+      backgroundColor = theme.dark ? '#1a365d' : '#f0f8ff';
     }
 
     return (
@@ -399,8 +399,8 @@ const EmbeddingScreen = ({ navigation }: { navigation: any }) => {
         </View>
         <Text style={styles.searchResultText}>{item.text}</Text>
       </View>
-    )
-  }
+    );
+  };
 
   if (!context) {
     return (
@@ -449,7 +449,7 @@ const EmbeddingScreen = ({ navigation }: { navigation: any }) => {
           showProgressBar={initProgress > 0}
         />
       </View>
-    )
+    );
   }
 
   return (
@@ -579,7 +579,7 @@ const EmbeddingScreen = ({ navigation }: { navigation: any }) => {
         )}
       </ScrollView>
     </View>
-  )
-}
+  );
+};
 
-export default EmbeddingScreen
+export default EmbeddingScreen;

@@ -1,16 +1,16 @@
-import React, { useEffect } from 'react'
-import { Alert } from 'react-native'
-import type { ContextParams } from '../utils/storage'
+import React, { useEffect } from 'react';
+import { Alert } from 'react-native';
+import type { ContextParams } from '../utils/storage';
 import {
   saveContextParams,
   loadContextParams,
   resetContextParams,
   DEFAULT_CONTEXT_PARAMS,
-} from '../utils/storage'
-import { useParameterModal } from '../hooks/useParameterModal'
-import { ParameterTextInput, ParameterSwitch } from './ParameterFormFields'
-import { ParameterMenu } from './ParameterMenu'
-import BaseParameterModal from './BaseParameterModal'
+} from '../utils/storage';
+import { useParameterModal } from '../hooks/useParameterModal';
+import { ParameterTextInput, ParameterSwitch } from './ParameterFormFields';
+import { ParameterMenu } from './ParameterMenu';
+import BaseParameterModal from './BaseParameterModal';
 
 interface ContextParamsModalProps {
   visible: boolean
@@ -18,7 +18,7 @@ interface ContextParamsModalProps {
   onSave: (params: ContextParams) => void
 }
 
-const CACHE_TYPE_OPTIONS = ['f16', 'f32', 'q8_0', 'q4_0', 'q4_1', 'iq4_nl', 'q5_0', 'q5_1']
+const CACHE_TYPE_OPTIONS = ['f16', 'f32', 'q8_0', 'q4_0', 'q4_1', 'iq4_nl', 'q5_0', 'q5_1'];
 
 export default function ContextParamsModal({
   visible,
@@ -37,20 +37,20 @@ export default function ContextParamsModal({
     saveParams: saveContextParams,
     resetParams: resetContextParams,
     defaultParams: DEFAULT_CONTEXT_PARAMS,
-  })
+  });
 
   useEffect(() => {
-    if (visible) loadParamsAsync()
-  }, [loadParamsAsync, visible])
+    if (visible) {loadParamsAsync();}
+  }, [loadParamsAsync, visible]);
 
   const handleTextInput = (text: string, paramKey: keyof ContextParams) => {
     if (text === '') {
-      updateParam(paramKey, undefined)
+      updateParam(paramKey, undefined);
     } else {
-      const parsedValue = parseInt(text, 10)
-      updateParam(paramKey, Number.isNaN(parsedValue) ? text : parsedValue)
+      const parsedValue = parseInt(text, 10);
+      updateParam(paramKey, Number.isNaN(parsedValue) ? text : parsedValue);
     }
-  }
+  };
 
   const validateIntegerParam = (
     value: any,
@@ -58,14 +58,14 @@ export default function ContextParamsModal({
     max: number,
     fieldName: string,
   ): string | null => {
-    if (value === undefined || value === null) return null
+    if (value === undefined || value === null) {return null;}
 
-    const num = typeof value === 'string' ? parseInt(value, 10) : value
+    const num = typeof value === 'string' ? parseInt(value, 10) : value;
     if (Number.isNaN(num) || num < min || num > max) {
-      return `${fieldName} must be between ${min} and ${max}`
+      return `${fieldName} must be between ${min} and ${max}`;
     }
-    return null
-  }
+    return null;
+  };
 
   const validateParams = (): { isValid: boolean; errors: string[] } => {
     const validations = [
@@ -75,64 +75,64 @@ export default function ContextParamsModal({
       validateIntegerParam(params.n_ubatch, 1, 99999, 'Micro Batch Size'),
       validateIntegerParam(params.n_threads, 1, 32, 'Threads'),
       validateIntegerParam(params.n_cpu_moe, 0, 99, 'CPU MoE Layers'),
-    ]
+    ];
 
-    const errors = validations.filter((error): error is string => error !== null)
-    return { isValid: errors.length === 0, errors }
-  }
+    const errors = validations.filter((error): error is string => error !== null);
+    return { isValid: errors.length === 0, errors };
+  };
 
   const convertStringParamsToNumbers = (
     stringParams: ContextParams,
   ): ContextParams => {
-    const converted = { ...stringParams }
+    const converted = { ...stringParams };
 
     if (typeof converted.n_ctx === 'string') {
-      const num = parseInt(converted.n_ctx, 10)
-      converted.n_ctx = Number.isNaN(num) ? undefined : num
+      const num = parseInt(converted.n_ctx, 10);
+      converted.n_ctx = Number.isNaN(num) ? undefined : num;
     }
 
     if (typeof converted.n_gpu_layers === 'string') {
-      const num = parseInt(converted.n_gpu_layers, 10)
-      converted.n_gpu_layers = Number.isNaN(num) ? undefined : num
+      const num = parseInt(converted.n_gpu_layers, 10);
+      converted.n_gpu_layers = Number.isNaN(num) ? undefined : num;
     }
 
     if (typeof converted.n_batch === 'string') {
-      const num = parseInt(converted.n_batch, 10)
-      converted.n_batch = Number.isNaN(num) ? undefined : num
+      const num = parseInt(converted.n_batch, 10);
+      converted.n_batch = Number.isNaN(num) ? undefined : num;
     }
 
     if (typeof converted.n_ubatch === 'string') {
-      const num = parseInt(converted.n_ubatch, 10)
-      converted.n_ubatch = Number.isNaN(num) ? undefined : num
+      const num = parseInt(converted.n_ubatch, 10);
+      converted.n_ubatch = Number.isNaN(num) ? undefined : num;
     }
 
     if (typeof converted.n_threads === 'string') {
-      const num = parseInt(converted.n_threads, 10)
-      converted.n_threads = Number.isNaN(num) ? undefined : num
+      const num = parseInt(converted.n_threads, 10);
+      converted.n_threads = Number.isNaN(num) ? undefined : num;
     }
 
     if (typeof converted.n_cpu_moe === 'string') {
-      const num = parseInt(converted.n_cpu_moe, 10)
-      converted.n_cpu_moe = Number.isNaN(num) ? undefined : num
+      const num = parseInt(converted.n_cpu_moe, 10);
+      converted.n_cpu_moe = Number.isNaN(num) ? undefined : num;
     }
 
-    return converted
-  }
+    return converted;
+  };
 
   const onSaveHandler = () => {
-    const validation = validateParams()
+    const validation = validateParams();
     if (!validation.isValid) {
       Alert.alert(
         'Validation Error',
         `Please fix the following errors:\n\n${validation.errors.join('\n')}`,
         [{ text: 'OK' }],
-      )
-      return
+      );
+      return;
     }
 
-    const convertedParams = convertStringParamsToNumbers(params)
-    handleSave((_params) => onSave(convertedParams), onClose)
-  }
+    const convertedParams = convertStringParamsToNumbers(params);
+    handleSave((_params) => onSave(convertedParams), onClose);
+  };
 
   return (
     <BaseParameterModal
@@ -154,10 +154,10 @@ export default function ContextParamsModal({
         onChangeText={(text) => {
           // Allow any text input, validation happens on save
           if (text === '') {
-            updateParam('n_ctx', undefined)
+            updateParam('n_ctx', undefined);
           } else {
-            const parsedValue = parseInt(text, 10)
-            updateParam('n_ctx', Number.isNaN(parsedValue) ? text : parsedValue)
+            const parsedValue = parseInt(text, 10);
+            updateParam('n_ctx', Number.isNaN(parsedValue) ? text : parsedValue);
           }
         }}
         keyboardType="numeric"
@@ -172,13 +172,13 @@ export default function ContextParamsModal({
         onChangeText={(text) => {
           // Allow any text input, validation happens on save
           if (text === '') {
-            updateParam('n_gpu_layers', undefined)
+            updateParam('n_gpu_layers', undefined);
           } else {
-            const parsedValue = parseInt(text, 10)
+            const parsedValue = parseInt(text, 10);
             updateParam(
               'n_gpu_layers',
               Number.isNaN(parsedValue) ? text : parsedValue,
-            )
+            );
           }
         }}
         keyboardType="numeric"
@@ -295,5 +295,5 @@ export default function ContextParamsModal({
         onValueChange={(value) => updateParam('swa_full', value)}
       />
     </BaseParameterModal>
-  )
+  );
 }

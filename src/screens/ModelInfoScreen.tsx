@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,22 +8,22 @@ import {
   TouchableOpacity,
   Dimensions,
   Clipboard,
-} from 'react-native'
+} from 'react-native';
 import ModelDownloadCard, {
   TTSModelDownloadCard,
   MtmdModelDownloadCard,
-} from '../components/ModelDownloadCard'
-import CustomModelModal from '../components/CustomModelModal'
-import CustomModelCard from '../components/CustomModelCard'
-import { createThemedStyles } from '../styles/commonStyles'
-import { useTheme } from '../contexts/ThemeContext'
-import { MODELS } from '../utils/constants'
-import { MaskedProgress } from '../components/MaskedProgress'
-import type { CustomModel } from '../utils/storage'
-import { loadCustomModels } from '../utils/storage'
-import { loadLlamaModelInfo } from 'llama.rn'
+} from '../components/ModelDownloadCard';
+import CustomModelModal from '../components/CustomModelModal';
+import CustomModelCard from '../components/CustomModelCard';
+import { createThemedStyles } from '../styles/commonStyles';
+import { useTheme } from '../contexts/ThemeContext';
+import { MODELS } from '../utils/constants';
+import { MaskedProgress } from '../components/MaskedProgress';
+import type { CustomModel } from '../utils/storage';
+import { loadCustomModels } from '../utils/storage';
+import { loadLlamaModelInfo } from 'llama.rn';
 
-const { width, height } = Dimensions.get('window')
+const { width, height } = Dimensions.get('window');
 
 interface ModelFileInfo {
   name: string
@@ -32,8 +32,8 @@ interface ModelFileInfo {
 }
 
 export default function ModelInfoScreen() {
-  const { theme } = useTheme()
-  const themedStyles = createThemedStyles(theme.colors)
+  const { theme } = useTheme();
+  const themedStyles = createThemedStyles(theme.colors);
 
   const styles = StyleSheet.create({
     container: themedStyles.container,
@@ -115,7 +115,7 @@ export default function ModelInfoScreen() {
         fontSize: 14,
         color: theme.colors.textSecondary,
       },
-  })
+  });
 
   const additionalStyles = StyleSheet.create({
     errorText: {
@@ -157,61 +157,61 @@ export default function ModelInfoScreen() {
       backgroundColor: theme.colors.border,
       marginVertical: 16,
     },
-  })
+  });
 
   // Component state
-  const [selectedModel, setSelectedModel] = useState<string | null>(null)
-  const [modelFiles, setModelFiles] = useState<ModelFileInfo[]>([])
-  const [isLoadingInfo, setIsLoadingInfo] = useState(false)
-  const [infoError, setInfoError] = useState<string | null>(null)
-  const [showCustomModelModal, setShowCustomModelModal] = useState(false)
-  const [customModels, setCustomModels] = useState<CustomModel[]>([])
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [modelFiles, setModelFiles] = useState<ModelFileInfo[]>([]);
+  const [isLoadingInfo, setIsLoadingInfo] = useState(false);
+  const [infoError, setInfoError] = useState<string | null>(null);
+  const [showCustomModelModal, setShowCustomModelModal] = useState(false);
+  const [customModels, setCustomModels] = useState<CustomModel[]>([]);
 
   // Load custom models on mount
   useEffect(() => {
     const loadCustomModelsData = async () => {
       try {
-        const models = await loadCustomModels()
-        setCustomModels(models)
+        const models = await loadCustomModels();
+        setCustomModels(models);
       } catch (error) {
-        console.error('Error loading custom models:', error)
+        console.error('Error loading custom models:', error);
       }
-    }
-    loadCustomModelsData()
-  }, [])
+    };
+    loadCustomModelsData();
+  }, []);
 
   const handleCustomModelAdded = async (_model: CustomModel) => {
     // Reload custom models to reflect the new addition
-    const models = await loadCustomModels()
-    setCustomModels(models)
-  }
+    const models = await loadCustomModels();
+    setCustomModels(models);
+  };
 
   const handleCustomModelRemoved = async () => {
     // Reload custom models to reflect the removal
-    const models = await loadCustomModels()
-    setCustomModels(models)
-  }
+    const models = await loadCustomModels();
+    setCustomModels(models);
+  };
 
   const loadModelInfo = async (
     modelName: string,
     files: Array<{ name: string; path: string }>,
   ) => {
-    setIsLoadingInfo(true)
-    setInfoError(null)
-    setModelFiles([])
-    setSelectedModel(modelName)
+    setIsLoadingInfo(true);
+    setInfoError(null);
+    setModelFiles([]);
+    setSelectedModel(modelName);
 
     try {
       const fileInfoPromises = files.map(async (file) => {
         try {
-          const info = await loadLlamaModelInfo(file.path)
+          const info = await loadLlamaModelInfo(file.path);
           return {
             name: file.name,
             path: file.path,
             info,
-          }
+          };
         } catch (fileError) {
-          console.warn(`Failed to load info for ${file.name}:`, fileError)
+          console.warn(`Failed to load info for ${file.name}:`, fileError);
           // Still add an entry with error info
           return {
             name: file.name,
@@ -221,64 +221,64 @@ export default function ModelInfoScreen() {
                 fileError instanceof Error ? fileError.message : 'Unknown error'
               }`,
             },
-          }
+          };
         }
-      })
+      });
 
-      const fileInfos = await Promise.all(fileInfoPromises)
-      setModelFiles(fileInfos)
+      const fileInfos = await Promise.all(fileInfoPromises);
+      setModelFiles(fileInfos);
     } catch (error) {
-      console.error('Failed to load model info:', error)
+      console.error('Failed to load model info:', error);
       setInfoError(
         error instanceof Error
           ? error.message
           : 'Failed to load model information',
-      )
+      );
     } finally {
-      setIsLoadingInfo(false)
+      setIsLoadingInfo(false);
     }
-  }
+  };
 
   const handleRegularModelInitialize = async (
     modelPath: string,
     modelKey: string,
   ) => {
-    const model = MODELS[modelKey as keyof typeof MODELS]
-    if (!model) return
+    const model = MODELS[modelKey as keyof typeof MODELS];
+    if (!model) {return;}
 
     // Show model info modal
-    await loadModelInfo(model.name, [{ name: 'Model', path: modelPath }])
-  }
+    await loadModelInfo(model.name, [{ name: 'Model', path: modelPath }]);
+  };
 
   const handleMultimodalModelInitialize = async (
     modelPath: string,
     mmprojPath: string,
     modelKey: string,
   ) => {
-    const model = MODELS[modelKey as keyof typeof MODELS]
-    if (!model) return
+    const model = MODELS[modelKey as keyof typeof MODELS];
+    if (!model) {return;}
 
     // Show model info modal for both model and mmproj
     await loadModelInfo(model.name, [
       { name: 'Model', path: modelPath },
       { name: 'MMProj', path: mmprojPath },
-    ])
-  }
+    ]);
+  };
 
   const handleTTSModelInitialize = async (
     ttsPath: string,
     vocoderPath: string,
     modelKey: string,
   ) => {
-    const model = MODELS[modelKey as keyof typeof MODELS]
-    if (!model) return
+    const model = MODELS[modelKey as keyof typeof MODELS];
+    if (!model) {return;}
 
     // Show model info modal for both TTS model and vocoder
     await loadModelInfo(model.name, [
       { name: 'TTS Model', path: ttsPath },
       { name: 'Vocoder', path: vocoderPath },
-    ])
-  }
+    ]);
+  };
 
   const handleCustomModelInitialize = async (
     customModel: CustomModel,
@@ -290,27 +290,27 @@ export default function ModelInfoScreen() {
       await loadModelInfo(`${customModel.id} (${customModel.quantization})`, [
         { name: 'Model', path: modelPath },
         { name: 'MMProj', path: mmprojPath },
-      ])
+      ]);
     } else {
       // Custom regular model
       await loadModelInfo(`${customModel.id} (${customModel.quantization})`, [
         { name: 'Model', path: modelPath },
-      ])
+      ]);
     }
-  }
+  };
 
   const closeModal = () => {
-    setSelectedModel(null)
-    setModelFiles([])
-    setInfoError(null)
-  }
+    setSelectedModel(null);
+    setModelFiles([]);
+    setInfoError(null);
+  };
 
   const copyToClipboard = (value: string) => {
-    Clipboard.setString(value)
-  }
+    Clipboard.setString(value);
+  };
 
   const renderSingleModelInfo = (fileInfo: ModelFileInfo) => {
-    const { info } = fileInfo
+    const { info } = fileInfo;
 
     if (info.error) {
       return (
@@ -319,14 +319,14 @@ export default function ModelInfoScreen() {
             {info.error}
           </Text>
         </View>
-      )
+      );
     }
 
     return Object.entries(info).map(([key, value]) => {
       const displayValue =
         typeof value === 'object'
           ? JSON.stringify(value, null, 2)
-          : String(value)
+          : String(value);
 
       return (
         <View key={key} style={styles.infoContainer}>
@@ -343,13 +343,13 @@ export default function ModelInfoScreen() {
             {displayValue}
           </Text>
         </View>
-      )
-    })
-  }
+      );
+    });
+  };
 
   const renderModelInfo = () => {
     if (isLoadingInfo) {
-      return null // Loading will be handled by MaskedProgress
+      return null; // Loading will be handled by MaskedProgress
     }
 
     if (infoError) {
@@ -357,7 +357,7 @@ export default function ModelInfoScreen() {
         <Text style={additionalStyles.errorText} selectable>
           {infoError}
         </Text>
-      )
+      );
     }
 
     if (modelFiles.length === 0) {
@@ -365,7 +365,7 @@ export default function ModelInfoScreen() {
         <Text style={additionalStyles.errorText} selectable>
           No model information available
         </Text>
-      )
+      );
     }
 
     // Single model - use original layout
@@ -377,7 +377,7 @@ export default function ModelInfoScreen() {
         >
           {modelFiles[0] && renderSingleModelInfo(modelFiles[0])}
         </ScrollView>
-      )
+      );
     }
 
     // Multiple models - split into separate ScrollViews
@@ -398,8 +398,8 @@ export default function ModelInfoScreen() {
           </View>
         ))}
       </View>
-    )
-  }
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -425,7 +425,7 @@ export default function ModelInfoScreen() {
                     customModel,
                     modelPath,
                     mmprojPath,
-                  )
+                  );
                 }}
                 onModelRemoved={handleCustomModelRemoved}
                 initializeButtonText="See"
@@ -448,7 +448,7 @@ export default function ModelInfoScreen() {
         <Text style={themedStyles.modelSectionTitle}>Default Models</Text>
         {Object.entries(MODELS).map(([key, model]) => {
           // Type assertion to access potential vocoder property
-          const modelWithVocoder = model as typeof model & { vocoder?: any }
+          const modelWithVocoder = model as typeof model & { vocoder?: any };
 
           if (model.mmproj && modelWithVocoder.vocoder) {
             // Multi-modal TTS model (like OUTE_TTS with vocoder) - currently no such model exists
@@ -462,10 +462,10 @@ export default function ModelInfoScreen() {
                 vocoder={modelWithVocoder.vocoder}
                 initializeButtonText="See"
                 onInitialize={(ttsPath: string, vocoderPath: string) => {
-                  handleTTSModelInitialize(ttsPath, vocoderPath, key)
+                  handleTTSModelInitialize(ttsPath, vocoderPath, key);
                 }}
               />
-            )
+            );
           } else if (model.mmproj) {
             // Multi-modal model
             return (
@@ -478,10 +478,10 @@ export default function ModelInfoScreen() {
                 size={model.size}
                 initializeButtonText="See"
                 onInitialize={(modelPath: string, mmprojPath: string) => {
-                  handleMultimodalModelInitialize(modelPath, mmprojPath, key)
+                  handleMultimodalModelInitialize(modelPath, mmprojPath, key);
                 }}
               />
-            )
+            );
           } else if (modelWithVocoder.vocoder) {
             // TTS model with vocoder
             return (
@@ -494,10 +494,10 @@ export default function ModelInfoScreen() {
                 vocoder={modelWithVocoder.vocoder}
                 initializeButtonText="See"
                 onInitialize={(ttsPath: string, vocoderPath: string) => {
-                  handleTTSModelInitialize(ttsPath, vocoderPath, key)
+                  handleTTSModelInitialize(ttsPath, vocoderPath, key);
                 }}
               />
-            )
+            );
           } else {
             // Regular text model
             return (
@@ -509,10 +509,10 @@ export default function ModelInfoScreen() {
                 size={model.size}
                 initializeButtonText="See"
                 onInitialize={(modelPath: string) => {
-                  handleRegularModelInitialize(modelPath, key)
+                  handleRegularModelInitialize(modelPath, key);
                 }}
               />
-            )
+            );
           }
         })}
       </ScrollView>
@@ -551,5 +551,5 @@ export default function ModelInfoScreen() {
         showProgressBar={false}
       />
     </View>
-  )
+  );
 }

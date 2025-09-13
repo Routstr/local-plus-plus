@@ -4,9 +4,9 @@ import React, {
   useLayoutEffect,
   useRef,
   useCallback,
-} from 'react'
-import { z } from 'zod'
-import { zodToJsonSchema } from 'zod-to-json-schema'
+} from 'react';
+import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import {
   View,
   Text,
@@ -14,53 +14,53 @@ import {
   ScrollView,
   Alert,
   TouchableOpacity,
-} from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Chat } from '@flyerhq/react-native-chat-ui'
-import type { MessageType } from '@flyerhq/react-native-chat-ui'
-import ModelDownloadCard from '../components/ModelDownloadCard'
-import ContextParamsModal from '../components/ContextParamsModal'
-import CompletionParamsModal from '../components/CompletionParamsModal'
-import CustomModelModal from '../components/CustomModelModal'
-import CustomModelCard from '../components/CustomModelCard'
-import { Bubble } from '../components/Bubble'
-import { HeaderButton } from '../components/HeaderButton'
-import { Menu } from '../components/Menu'
-import { MessagesModal } from '../components/MessagesModal'
-import { MaskedProgress } from '../components/MaskedProgress'
-import SessionModal from '../components/SessionModal'
-import { StopButton } from '../components/StopButton'
-import ToolsModal from '../components/ToolsModal'
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Chat } from '@flyerhq/react-native-chat-ui';
+import type { MessageType } from '@flyerhq/react-native-chat-ui';
+import ModelDownloadCard from '../components/ModelDownloadCard';
+import ContextParamsModal from '../components/ContextParamsModal';
+import CompletionParamsModal from '../components/CompletionParamsModal';
+import CustomModelModal from '../components/CustomModelModal';
+import CustomModelCard from '../components/CustomModelCard';
+import { Bubble } from '../components/Bubble';
+import { HeaderButton } from '../components/HeaderButton';
+import { Menu } from '../components/Menu';
+import { MessagesModal } from '../components/MessagesModal';
+import { MaskedProgress } from '../components/MaskedProgress';
+import SessionModal from '../components/SessionModal';
+import { StopButton } from '../components/StopButton';
+import ToolsModal from '../components/ToolsModal';
 import {
   createThemedStyles,
   chatDarkTheme,
   chatLightTheme,
-} from '../styles/commonStyles'
-import { useTheme } from '../contexts/ThemeContext'
-import { MODELS } from '../utils/constants'
+} from '../styles/commonStyles';
+import { useTheme } from '../contexts/ThemeContext';
+import { MODELS } from '../utils/constants';
 import type {
   ContextParams,
   CompletionParams,
   CustomModel,
   MCPConfig,
-} from '../utils/storage'
+} from '../utils/storage';
 import {
   loadContextParams,
   loadCompletionParams,
   loadCustomModels,
   loadMCPConfig,
-} from '../utils/storage'
-import { mcpClientManager, type MCPTool } from '../utils/mcpClient'
-import type { LLMMessage } from '../utils/llmMessages'
-import { initLlama, LlamaContext } from 'llama.rn'
+} from '../utils/storage';
+import { mcpClientManager, type MCPTool } from '../utils/mcpClient';
+import type { LLMMessage } from '../utils/llmMessages';
+import { initLlama, LlamaContext } from 'llama.rn';
 
-const user = { id: 'user' }
-const assistant = { id: 'assistant' }
+const user = { id: 'user' };
+const assistant = { id: 'assistant' };
 
-const randId = () => Math.random().toString(36).substr(2, 7)
+const randId = () => Math.random().toString(36).substr(2, 7);
 
 const DEFAULT_SYSTEM_PROMPT =
-  'You are a helpful AI assistant with access to tools. You can call tools to help answer user questions.'
+  'You are a helpful AI assistant with access to tools. You can call tools to help answer user questions.';
 
 interface ToolCall {
   id: string
@@ -127,11 +127,11 @@ const AVAILABLE_TOOLS = [
       ),
     },
   },
-]
+];
 
 export default function ToolCallsScreen({ navigation }: { navigation: any }) {
-  const { isDark, theme } = useTheme()
-  const themedStyles = createThemedStyles(theme.colors)
+  const { isDark, theme } = useTheme();
+  const themedStyles = createThemedStyles(theme.colors);
 
   const styles = StyleSheet.create({
     // Using themed styles for common patterns
@@ -173,93 +173,93 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
       fontSize: 14,
       fontWeight: '500',
     },
-  })
+  });
 
-  const messagesRef = useRef<MessageType.Any[]>([])
-  const [, setMessagesVersion] = useState(0) // For UI updates
-  const [isLoading, setIsLoading] = useState(false)
-  const [context, setContext] = useState<LlamaContext | null>(null)
-  const [isModelReady, setIsModelReady] = useState(false)
-  const [initProgress, setInitProgress] = useState(0)
-  const [showContextParamsModal, setShowContextParamsModal] = useState(false)
+  const messagesRef = useRef<MessageType.Any[]>([]);
+  const [, setMessagesVersion] = useState(0); // For UI updates
+  const [isLoading, setIsLoading] = useState(false);
+  const [context, setContext] = useState<LlamaContext | null>(null);
+  const [isModelReady, setIsModelReady] = useState(false);
+  const [initProgress, setInitProgress] = useState(0);
+  const [showContextParamsModal, setShowContextParamsModal] = useState(false);
   const [showCompletionParamsModal, setShowCompletionParamsModal] =
-    useState(false)
-  const [showMessagesModal, setShowMessagesModal] = useState(false)
-  const [showSessionModal, setShowSessionModal] = useState(false)
-  const [showCustomModelModal, setShowCustomModelModal] = useState(false)
-  const [showToolsModal, setShowToolsModal] = useState(false)
-  const [contextParams, setContextParams] = useState<ContextParams | null>(null)
+    useState(false);
+  const [showMessagesModal, setShowMessagesModal] = useState(false);
+  const [showSessionModal, setShowSessionModal] = useState(false);
+  const [showCustomModelModal, setShowCustomModelModal] = useState(false);
+  const [showToolsModal, setShowToolsModal] = useState(false);
+  const [contextParams, setContextParams] = useState<ContextParams | null>(null);
   const [completionParams, setCompletionParams] =
-    useState<CompletionParams | null>(null)
-  const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT)
-  const [customModels, setCustomModels] = useState<CustomModel[]>([])
-  const [currentTools, setCurrentTools] = useState(AVAILABLE_TOOLS)
+    useState<CompletionParams | null>(null);
+  const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT);
+  const [customModels, setCustomModels] = useState<CustomModel[]>([]);
+  const [currentTools, setCurrentTools] = useState(AVAILABLE_TOOLS);
   const [mockResponses, setMockResponses] = useState<Record<string, string>>({
     get_weather: "It's sunny and 72°F in your location with light clouds.",
     calculate: 'The calculation result is 42.',
     get_time: 'The current time is 2:30 PM on Tuesday, January 15, 2025.',
-  })
-  const [, setMcpConfig] = useState<MCPConfig>({ mcpServers: {} })
-  const [mcpTools, setMcpTools] = useState<MCPTool[]>([])
-  const [disabledTools, setDisabledTools] = useState<Set<string>>(new Set())
-  const insets = useSafeAreaInsets()
+  });
+  const [, setMcpConfig] = useState<MCPConfig>({ mcpServers: {} });
+  const [mcpTools, setMcpTools] = useState<MCPTool[]>([]);
+  const [disabledTools, setDisabledTools] = useState<Set<string>>(new Set());
+  const insets = useSafeAreaInsets();
 
   useEffect(
     () => () => {
       if (context) {
-        context.release()
+        context.release();
       }
     },
     [context],
-  )
+  );
 
   // Load custom models on mount
   useEffect(() => {
     const loadCustomModelsData = async () => {
       try {
-        const models = await loadCustomModels()
-        setCustomModels(models)
+        const models = await loadCustomModels();
+        setCustomModels(models);
       } catch (error) {
-        console.error('Error loading custom models:', error)
+        console.error('Error loading custom models:', error);
       }
-    }
-    loadCustomModelsData()
-  }, [])
+    };
+    loadCustomModelsData();
+  }, []);
 
   // Load MCP configuration on mount
   useEffect(() => {
     const loadMCPData = async () => {
       try {
-        const config = await loadMCPConfig()
-        setMcpConfig(config)
-        mcpClientManager.updateConfig(config)
+        const config = await loadMCPConfig();
+        setMcpConfig(config);
+        mcpClientManager.updateConfig(config);
         // Don't auto-connect on startup, wait for user action
       } catch (error) {
-        console.error('Error loading MCP config:', error)
+        console.error('Error loading MCP config:', error);
       }
-    }
-    loadMCPData()
-  }, [])
+    };
+    loadMCPData();
+  }, []);
 
   const handleSaveContextParams = (params: ContextParams) => {
-    setContextParams(params)
-  }
+    setContextParams(params);
+  };
 
   const handleSaveCompletionParams = (params: CompletionParams) => {
-    setCompletionParams(params)
-  }
+    setCompletionParams(params);
+  };
 
   const handleCustomModelAdded = async (_model: CustomModel) => {
     // Reload custom models to reflect the new addition
-    const models = await loadCustomModels()
-    setCustomModels(models)
-  }
+    const models = await loadCustomModels();
+    setCustomModels(models);
+  };
 
   const handleCustomModelRemoved = async () => {
     // Reload custom models to reflect the removal
-    const models = await loadCustomModels()
-    setCustomModels(models)
-  }
+    const models = await loadCustomModels();
+    setCustomModels(models);
+  };
 
   const buildLLMMessages = (): LLMMessage[] => {
     const conversationMessages: LLMMessage[] = [
@@ -267,7 +267,7 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
         role: 'system',
         content: systemPrompt,
       },
-    ]
+    ];
 
     // Add previous messages from chat history
     const recentMessages = messagesRef.current
@@ -283,17 +283,17 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
             role: 'assistant',
             content: msg.text,
             tool_calls: msg.metadata.tool_calls || [],
-          })
+          });
         } else if (msg.metadata?.toolMessage) {
           // This contains tool results, add them as individual tool messages
-          const { toolMessage } = msg.metadata
-          acc.push(toolMessage)
+          const { toolMessage } = msg.metadata;
+          acc.push(toolMessage);
         } else if (msg.author.id === user.id) {
           // Regular user message
           acc.push({
             role: 'user',
             content: msg.text,
-          })
+          });
         } else if (!msg.metadata?.tool_calls) {
           // Regular assistant message (only if not tool-related)
           acc.push({
@@ -301,34 +301,34 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
             content: msg.text,
             reasoning_content:
               msg.metadata?.completionResult?.reasoning_content,
-          })
+          });
         }
-        return acc
-      }, [])
+        return acc;
+      }, []);
 
-    return [...conversationMessages, ...recentMessages]
-  }
+    return [...conversationMessages, ...recentMessages];
+  };
 
   const addMessage = useCallback((message: MessageType.Any) => {
-    messagesRef.current = [message, ...messagesRef.current]
-    setMessagesVersion((prev) => prev + 1)
-  }, [])
+    messagesRef.current = [message, ...messagesRef.current];
+    setMessagesVersion((prev) => prev + 1);
+  }, []);
 
   const updateMessage = (
     messageId: string,
     updateFn: (msg: MessageType.Any) => MessageType.Any,
   ) => {
-    const index = messagesRef.current.findIndex((msg) => msg.id === messageId)
+    const index = messagesRef.current.findIndex((msg) => msg.id === messageId);
     if (index >= 0) {
       messagesRef.current = messagesRef.current.map((msg, i) => {
         if (i === index) {
-          return updateFn(msg)
+          return updateFn(msg);
         }
-        return msg
-      })
-      setMessagesVersion((prev) => prev + 1)
+        return msg;
+      });
+      setMessagesVersion((prev) => prev + 1);
     }
-  }
+  };
 
   const addSystemMessage = useCallback(
     (text: string, metadata = {}) => {
@@ -339,12 +339,12 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
         text,
         type: 'text',
         metadata: { system: true, ...metadata },
-      }
-      addMessage(textMessage)
-      return textMessage.id
+      };
+      addMessage(textMessage);
+      return textMessage.id;
     },
     [addMessage],
-  )
+  );
 
   const handleReset = useCallback(() => {
     Alert.alert(
@@ -359,16 +359,16 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
           text: 'Reset',
           style: 'destructive',
           onPress: () => {
-            messagesRef.current = []
-            setMessagesVersion((prev) => prev + 1)
+            messagesRef.current = [];
+            setMessagesVersion((prev) => prev + 1);
             addSystemMessage(
-              `Hello! I'm a tool-calling AI assistant. You can customize my tools using the tools button in the header. Try asking me something!`,
-            )
+              'Hello! I\'m a tool-calling AI assistant. You can customize my tools using the tools button in the header. Try asking me something!',
+            );
           },
         },
       ],
-    )
-  }, [addSystemMessage])
+    );
+  }, [addSystemMessage]);
 
   // Set up navigation header buttons
   useLayoutEffect(() => {
@@ -402,7 +402,7 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
             />
           </View>
         ),
-      })
+      });
     } else {
       navigation.setOptions({
         headerRight: () => (
@@ -411,52 +411,52 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
             onPress={() => setShowContextParamsModal(true)}
           />
         ),
-      })
+      });
     }
-  }, [navigation, isModelReady, handleReset])
+  }, [navigation, isModelReady, handleReset]);
 
   const handleImportMessages = (newMessages: MessageType.Any[]) => {
     // Reset messages and add system message back
-    messagesRef.current = []
-    setMessagesVersion((prev) => prev + 1)
+    messagesRef.current = [];
+    setMessagesVersion((prev) => prev + 1);
 
     // Add the initial system message
     addSystemMessage(
-      `Hello! I'm a tool-calling AI assistant. You can customize my tools using the tools button in the header. Try asking me something!`,
-    )
+      'Hello! I\'m a tool-calling AI assistant. You can customize my tools using the tools button in the header. Try asking me something!',
+    );
 
     // Add imported messages
-    messagesRef.current = [...newMessages.reverse(), ...messagesRef.current]
-    setMessagesVersion((prev) => prev + 1)
-  }
+    messagesRef.current = [...newMessages.reverse(), ...messagesRef.current];
+    setMessagesVersion((prev) => prev + 1);
+  };
 
   const handleUpdateSystemPrompt = (newSystemPrompt: string) => {
-    setSystemPrompt(newSystemPrompt)
-  }
+    setSystemPrompt(newSystemPrompt);
+  };
 
   const handleSaveTools = (
     tools: any[],
     newMockResponses: Record<string, string>,
   ) => {
-    setCurrentTools(tools)
-    setMockResponses(newMockResponses)
-  }
+    setCurrentTools(tools);
+    setMockResponses(newMockResponses);
+  };
 
   useEffect(
     () => () => {
-      mcpClientManager.disconnect()
+      mcpClientManager.disconnect();
     },
     [],
-  )
+  );
 
   const handleMCPConfigSave = async (config: MCPConfig) => {
-    setMcpConfig(config)
-    mcpClientManager.updateConfig(config)
+    setMcpConfig(config);
+    mcpClientManager.updateConfig(config);
 
     // Update MCP tools from connected servers
-    const allMcpTools = mcpClientManager.getAllTools()
-    setMcpTools(allMcpTools)
-  }
+    const allMcpTools = mcpClientManager.getAllTools();
+    setMcpTools(allMcpTools);
+  };
 
   const convertMCPToolsToOpenAI = (tools: MCPTool[]) =>
     tools
@@ -468,14 +468,14 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
           description: tool.description,
           parameters: tool.inputSchema,
         },
-      }))
+      }));
 
   const initializeModel = async (modelPath: string) => {
     try {
-      setIsLoading(true)
-      setInitProgress(0)
+      setIsLoading(true);
+      setInitProgress(0);
 
-      const params = contextParams || (await loadContextParams())
+      const params = contextParams || (await loadContextParams());
       const llamaContext = await initLlama(
         {
           model: modelPath,
@@ -483,30 +483,30 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
         },
         (progress) => {
           // Progress is reported as 1 to 100
-          setInitProgress(progress)
+          setInitProgress(progress);
         },
-      )
+      );
 
-      setContext(llamaContext)
-      setIsModelReady(true)
-      setInitProgress(100)
+      setContext(llamaContext);
+      setIsModelReady(true);
+      setInitProgress(100);
 
       addSystemMessage(
-        `Hello! I'm a tool-calling AI assistant. You can customize my tools using the tools button in the header. Try asking me something!`,
-      )
+        'Hello! I\'m a tool-calling AI assistant. You can customize my tools using the tools button in the header. Try asking me something!',
+      );
     } catch (error: any) {
-      Alert.alert('Error', `Failed to initialize model: ${error.message}`)
+      Alert.alert('Error', `Failed to initialize model: ${error.message}`);
     } finally {
-      setIsLoading(false)
-      setInitProgress(0)
+      setIsLoading(false);
+      setInitProgress(0);
     }
-  }
+  };
 
   const executeTool = async (toolCall: ToolCall): Promise<ToolResult> => {
-    const { name, arguments: args } = toolCall
+    const { name, arguments: args } = toolCall;
 
     // Check custom tools first
-    const customTool = currentTools.find((tool) => tool.function.name === name)
+    const customTool = currentTools.find((tool) => tool.function.name === name);
     if (customTool) {
       return {
         id: toolCall.id,
@@ -515,34 +515,34 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
           `Error: Response not implemented for custom tool: ${name}(${JSON.stringify(
             args,
           )})`,
-      }
+      };
     }
 
     // Check MCP tools
-    const mcpTool = mcpTools.find((tool) => tool.name === name)
+    const mcpTool = mcpTools.find((tool) => tool.name === name);
     if (mcpTool) {
       try {
-        const result = await mcpClientManager.executeTool(name, args)
+        const result = await mcpClientManager.executeTool(name, args);
         return {
           id: toolCall.id,
           result: typeof result === 'string' ? result : JSON.stringify(result),
-        }
+        };
       } catch (error: any) {
         return {
           id: toolCall.id,
           result: `MCP Tool Error: ${error.message}`,
-        }
+        };
       }
     }
 
     return {
       id: toolCall.id,
       result: `Error: Tool not found: ${name}`,
-    }
-  }
+    };
+  };
 
   const performCompletion = async (userMessageText?: string) => {
-    if (!context || isLoading) return
+    if (!context || isLoading) {return;}
 
     if (userMessageText) {
       const userMessage: MessageType.Text = {
@@ -551,38 +551,38 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
         id: randId(),
         text: userMessageText,
         type: 'text',
-      }
-      addMessage(userMessage)
+      };
+      addMessage(userMessage);
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
 
     try {
       // Build conversation messages using the reusable function
-      const conversationMessages = buildLLMMessages()
+      const conversationMessages = buildLLMMessages();
 
-      const responseId = randId()
+      const responseId = randId();
       const responseMessage: MessageType.Text = {
         author: assistant,
         createdAt: Date.now(),
         id: responseId,
         text: '',
         type: 'text',
-      }
+      };
 
-      addMessage(responseMessage)
+      addMessage(responseMessage);
 
       const completionParameters =
-        completionParams || (await loadCompletionParams())
+        completionParams || (await loadCompletionParams());
 
       // Combine custom tools and MCP tools, filtering out disabled ones
       const enabledCustomTools = currentTools.filter(
         (tool) => !disabledTools.has(tool.function.name),
-      )
+      );
       const allTools = [
         ...enabledCustomTools,
         ...convertMCPToolsToOpenAI(mcpTools),
-      ]
+      ];
 
       const completionResult = await context.completion(
         {
@@ -598,7 +598,7 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
             content = '',
             reasoning_content: reasoningContent,
             tool_calls: toolCalls,
-          } = data
+          } = data;
 
           // Update message with streaming data
           updateMessage(responseId, (msg) => {
@@ -614,16 +614,16 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
                     content: content.replace(/^\s+/, ''),
                   },
                 },
-              }
+              };
             }
-            return msg
-          })
+            return msg;
+          });
         },
-      )
+      );
 
       const content = completionResult.interrupted
         ? completionResult.text
-        : completionResult.content
+        : completionResult.content;
 
       // update last message
       updateMessage(responseId, (msg) => {
@@ -636,24 +636,24 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
               ...msg.metadata,
               completionResult,
             },
-          }
+          };
         }
-        return msg
-      })
+        return msg;
+      });
 
-      let toolCalls = completionResult.tool_calls || []
+      let toolCalls = completionResult.tool_calls || [];
 
       // Handle tool calls if any were made
       if (toolCalls && toolCalls.length > 0) {
         // Ensure all tool calls have IDs
         toolCalls.forEach((toolCall) => {
-          if (!toolCall.id) toolCall.id = randId()
-        })
+          if (!toolCall.id) {toolCall.id = randId();}
+        });
         // Unique by id (last one wins)
         toolCalls = toolCalls.filter(
           (toolCall, index, self) =>
             index === self.findLastIndex((t) => t.id === toolCall.id),
-        )
+        );
 
         // Update the response message to store tool calls in metadata
         updateMessage(responseId, (msg) => {
@@ -673,14 +673,14 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
                 tool_calls: toolCalls,
                 completionResult,
               },
-            }
+            };
           }
-          return msg
-        })
+          return msg;
+        });
 
         // Execute tool calls
         await toolCalls.reduce(async (promise, toolCall) => {
-          await promise
+          await promise;
           // Ask user for confirmation before executing tools
           const shouldExecute = await new Promise<boolean>((resolve) => {
             Alert.alert(
@@ -697,28 +697,28 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
                   onPress: () => resolve(true),
                 },
               ],
-            )
-          })
-          let toolMessage: ToolMessage
+            );
+          });
+          let toolMessage: ToolMessage;
           if (!shouldExecute) {
             toolMessage = {
               tool_call_id: toolCall.id!,
               role: 'tool',
               content: 'Error: Tool execution was declined by the user',
-            }
+            };
           } else {
             const result = await executeTool({
               id: toolCall.id!,
               name: toolCall.function.name,
               arguments: JSON.parse(toolCall.function.arguments),
-            })
+            });
             toolMessage = {
               tool_call_id: toolCall.id!,
               role: 'tool',
               content: result.error
                 ? result.error
                 : JSON.stringify(result.result),
-            }
+            };
           }
           addMessage({
             author: assistant,
@@ -727,25 +727,25 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
             text: `📊 Tool Result:\n${toolMessage.content}`,
             type: 'text',
             metadata: { toolMessage },
-          })
-        }, Promise.resolve())
+          });
+        }, Promise.resolve());
 
         // Continue the conversation with tool results by calling performCompletion recursively
         // Wait a bit to let the UI update, then continue recursively
         setTimeout(() => {
-          performCompletion()
-        }, 1000)
+          performCompletion();
+        }, 1000);
       }
     } catch (error: any) {
-      Alert.alert('Error', `Failed to generate response: ${error.message}`)
+      Alert.alert('Error', `Failed to generate response: ${error.message}`);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleSendPress = async (message: MessageType.PartialText) => {
-    await performCompletion(message.text)
-  }
+    await performCompletion(message.text);
+  };
 
   const renderBubble = ({
     child,
@@ -753,7 +753,7 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
   }: {
     child: React.ReactNode
     message: MessageType.Any
-  }) => <Bubble child={child} message={message} />
+  }) => <Bubble child={child} message={message} />;
 
   if (!isModelReady) {
     return (
@@ -807,7 +807,7 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
             'GEMMA_3N_E2B',
             'GEMMA_3N_E4B',
           ].map((model) => {
-            const modelInfo = MODELS[model as keyof typeof MODELS]
+            const modelInfo = MODELS[model as keyof typeof MODELS];
             return (
               <ModelDownloadCard
                 key={model}
@@ -817,7 +817,7 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
                 size={modelInfo.size}
                 onInitialize={initializeModel}
               />
-            )
+            );
           })}
         </ScrollView>
 
@@ -842,7 +842,7 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
           showProgressBar={initProgress > 0}
         />
       </View>
-    )
+    );
   }
 
   return (
@@ -901,5 +901,5 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
         onDisabledToolsChange={setDisabledTools}
       />
     </View>
-  )
+  );
 }

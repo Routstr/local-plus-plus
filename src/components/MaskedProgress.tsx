@@ -1,8 +1,8 @@
-/* eslint-disable react/require-default-props */
-import React from 'react'
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native'
-import { FontSizes, Spacing } from '../styles/commonStyles'
-import { useTheme } from '../contexts/ThemeContext'
+
+import React from 'react';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { FontSizes, Spacing } from '../styles/commonStyles';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface MaskedProgressProps {
   visible: boolean
@@ -12,8 +12,8 @@ interface MaskedProgressProps {
 }
 
 export function MaskedProgress(props: MaskedProgressProps) {
-  const { visible, text = 'Loading...', progress = 0, showProgressBar = false } = props
-  const { theme } = useTheme()
+  const { visible, text = 'Loading...', progress = 0, showProgressBar = false } = props;
+  const { theme } = useTheme();
 
   const styles = StyleSheet.create({
     overlay: {
@@ -63,9 +63,9 @@ export function MaskedProgress(props: MaskedProgressProps) {
       backgroundColor: theme.colors.primary,
       borderRadius: 4,
     },
-  })
+  });
 
-  if (!visible) return null
+  if (!visible) {return null;}
 
   return (
     <View style={styles.overlay}>
@@ -86,5 +86,5 @@ export function MaskedProgress(props: MaskedProgressProps) {
         )}
       </View>
     </View>
-  )
+  );
 }

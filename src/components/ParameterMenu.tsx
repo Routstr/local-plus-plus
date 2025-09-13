@@ -1,9 +1,9 @@
-import React from 'react'
-import { View, Text, TouchableOpacity, Platform } from 'react-native'
-import { MenuView } from '@react-native-menu/menu'
-import Icon from '@react-native-vector-icons/material-design-icons'
-import { createThemedStyles } from '../styles/commonStyles'
-import { useTheme } from '../contexts/ThemeContext'
+import React from 'react';
+import { View, Text, TouchableOpacity, Platform } from 'react-native';
+import { MenuView } from '@react-native-menu/menu';
+import Icon from '@react-native-vector-icons/material-design-icons';
+import { createThemedStyles } from '../styles/commonStyles';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface ParameterMenuProps {
   label: string
@@ -22,8 +22,8 @@ export function ParameterMenu({
   onSelect,
   placeholder = 'Select...',
 }: ParameterMenuProps) {
-  const { theme } = useTheme()
-  const themedStyles = createThemedStyles(theme.colors)
+  const { theme } = useTheme();
+  const themedStyles = createThemedStyles(theme.colors);
 
   const menuActions = options.map((option) => ({
     id: option,
@@ -31,11 +31,11 @@ export function ParameterMenu({
     ...(Platform.OS === 'ios' && value === option && {
       state: 'on' as const,
     }),
-  }))
+  }));
 
   const handleMenuAction = ({ nativeEvent }: { nativeEvent: { event: string } }) => {
-    onSelect(nativeEvent.event)
-  }
+    onSelect(nativeEvent.event);
+  };
 
   return (
     <View style={themedStyles.paramGroup}>
@@ -75,5 +75,5 @@ export function ParameterMenu({
         </TouchableOpacity>
       </MenuView>
     </View>
-  )
+  );
 }

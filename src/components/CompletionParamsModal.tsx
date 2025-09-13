@@ -1,19 +1,19 @@
-import React, { useEffect } from 'react'
-import { Alert } from 'react-native'
-import type { CompletionParams } from '../utils/storage'
+import React, { useEffect } from 'react';
+import { Alert } from 'react-native';
+import type { CompletionParams } from '../utils/storage';
 import {
   saveCompletionParams,
   loadCompletionParams,
   resetCompletionParams,
   DEFAULT_COMPLETION_PARAMS,
-} from '../utils/storage'
-import { useParameterModal } from '../hooks/useParameterModal'
+} from '../utils/storage';
+import { useParameterModal } from '../hooks/useParameterModal';
 import {
   ParameterTextInput,
   ParameterSwitch,
   StopSequenceField,
-} from './ParameterFormFields'
-import BaseParameterModal from './BaseParameterModal'
+} from './ParameterFormFields';
+import BaseParameterModal from './BaseParameterModal';
 
 interface CompletionParamsModalProps {
   visible: boolean
@@ -38,28 +38,28 @@ export default function CompletionParamsModal({
     saveParams: saveCompletionParams,
     resetParams: resetCompletionParams,
     defaultParams: DEFAULT_COMPLETION_PARAMS,
-  })
+  });
 
   useEffect(() => {
-    if (visible) loadParamsAsync()
-  }, [loadParamsAsync, visible])
+    if (visible) {loadParamsAsync();}
+  }, [loadParamsAsync, visible]);
 
   const handleTextInput = (text: string, paramKey: keyof CompletionParams) => {
     if (text === '') {
-      updateParam(paramKey, undefined)
+      updateParam(paramKey, undefined);
     } else {
-      const parsedInt = parseInt(text, 10)
-      const parsedFloat = parseFloat(text)
+      const parsedInt = parseInt(text, 10);
+      const parsedFloat = parseFloat(text);
 
       // For integer fields
       if (paramKey === 'n_predict') {
-        updateParam(paramKey, Number.isNaN(parsedInt) ? text : parsedInt)
+        updateParam(paramKey, Number.isNaN(parsedInt) ? text : parsedInt);
       } else {
         // For float fields (temperature, top_p)
-        updateParam(paramKey, Number.isNaN(parsedFloat) ? text : parsedFloat)
+        updateParam(paramKey, Number.isNaN(parsedFloat) ? text : parsedFloat);
       }
     }
-  }
+  };
 
   const validateIntegerParam = (
     value: any,
@@ -67,14 +67,14 @@ export default function CompletionParamsModal({
     max: number,
     fieldName: string,
   ): string | null => {
-    if (value === undefined || value === null) return null
+    if (value === undefined || value === null) {return null;}
 
-    const num = typeof value === 'string' ? parseInt(value, 10) : value
+    const num = typeof value === 'string' ? parseInt(value, 10) : value;
     if (Number.isNaN(num) || num < min || num > max) {
-      return `${fieldName} must be between ${min} and ${max}`
+      return `${fieldName} must be between ${min} and ${max}`;
     }
-    return null
-  }
+    return null;
+  };
 
   const validateNumberParam = (
     value: any,
@@ -82,14 +82,14 @@ export default function CompletionParamsModal({
     max: number,
     fieldName: string,
   ): string | null => {
-    if (value === undefined || value === null) return null
+    if (value === undefined || value === null) {return null;}
 
-    const num = typeof value === 'string' ? parseFloat(value) : value
+    const num = typeof value === 'string' ? parseFloat(value) : value;
     if (Number.isNaN(num) || num < min || num > max) {
-      return `${fieldName} must be between ${min} and ${max}`
+      return `${fieldName} must be between ${min} and ${max}`;
     }
-    return null
-  }
+    return null;
+  };
 
   const validateParams = (): { isValid: boolean; errors: string[] } => {
     const validations = [
@@ -101,67 +101,67 @@ export default function CompletionParamsModal({
       ),
       validateNumberParam(params.temperature, 0.0, 2.0, 'Temperature'),
       validateNumberParam(params.top_p, 0.0, 1.0, 'Top-p'),
-    ]
+    ];
 
     const errors = validations.filter(
       (error): error is string => error !== null,
-    )
-    return { isValid: errors.length === 0, errors }
-  }
+    );
+    return { isValid: errors.length === 0, errors };
+  };
 
   const convertStringParamsToNumbers = (
     stringParams: CompletionParams,
   ): CompletionParams => {
-    const converted = { ...stringParams }
+    const converted = { ...stringParams };
 
     if (typeof converted.n_predict === 'string') {
-      const num = parseInt(converted.n_predict, 10)
-      converted.n_predict = Number.isNaN(num) ? undefined : num
+      const num = parseInt(converted.n_predict, 10);
+      converted.n_predict = Number.isNaN(num) ? undefined : num;
     }
 
     if (typeof converted.temperature === 'string') {
-      const num = parseFloat(converted.temperature)
-      converted.temperature = Number.isNaN(num) ? undefined : num
+      const num = parseFloat(converted.temperature);
+      converted.temperature = Number.isNaN(num) ? undefined : num;
     }
 
     if (typeof converted.top_p === 'string') {
-      const num = parseFloat(converted.top_p)
-      converted.top_p = Number.isNaN(num) ? undefined : num
+      const num = parseFloat(converted.top_p);
+      converted.top_p = Number.isNaN(num) ? undefined : num;
     }
 
-    return converted
-  }
+    return converted;
+  };
 
   const addStopSequence = () => {
-    const newStop = [...(params.stop || []), '']
-    updateParam('stop', newStop)
-  }
+    const newStop = [...(params.stop || []), ''];
+    updateParam('stop', newStop);
+  };
 
   const removeStopSequence = (index: number) => {
-    const newStop = (params.stop || []).filter((_, i) => i !== index)
-    updateParam('stop', newStop)
-  }
+    const newStop = (params.stop || []).filter((_, i) => i !== index);
+    updateParam('stop', newStop);
+  };
 
   const updateStopSequence = (index: number, value: string) => {
-    const newStop = [...(params.stop || [])]
-    newStop[index] = value
-    updateParam('stop', newStop)
-  }
+    const newStop = [...(params.stop || [])];
+    newStop[index] = value;
+    updateParam('stop', newStop);
+  };
 
   const onSaveHandler = () => {
-    const validation = validateParams()
+    const validation = validateParams();
     if (!validation.isValid) {
       Alert.alert(
         'Validation Error',
         `Please fix the following errors:\n\n${validation.errors.join('\n')}`,
         [{ text: 'OK' }],
-      )
-      return
+      );
+      return;
     }
 
-    const convertedParams = convertStringParamsToNumbers(params)
-    handleSave((_params) => onSave(convertedParams), onClose)
-  }
+    const convertedParams = convertStringParamsToNumbers(params);
+    handleSave((_params) => onSave(convertedParams), onClose);
+  };
 
   return (
     <BaseParameterModal
@@ -219,5 +219,5 @@ export default function CompletionParamsModal({
         onAddStopSequence={addStopSequence}
       />
     </BaseParameterModal>
-  )
+  );
 }

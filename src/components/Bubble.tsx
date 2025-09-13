@@ -1,10 +1,10 @@
-import React, { useContext, useState } from 'react'
-import type { ReactNode } from 'react'
-import { View, Text, TouchableOpacity, Image } from 'react-native'
-import Clipboard from '@react-native-clipboard/clipboard'
-import { ThemeContext, UserContext } from '@flyerhq/react-native-chat-ui'
-import type { MessageType } from '@flyerhq/react-native-chat-ui'
-import { useTheme } from '../contexts/ThemeContext'
+import React, { useContext, useState } from 'react';
+import type { ReactNode } from 'react';
+import { View, Text, TouchableOpacity, Image } from 'react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
+import { ThemeContext, UserContext } from '@flyerhq/react-native-chat-ui';
+import type { MessageType } from '@flyerhq/react-native-chat-ui';
+import { useTheme } from '../contexts/ThemeContext';
 
 export const Bubble = ({
   child,
@@ -13,51 +13,51 @@ export const Bubble = ({
   child: ReactNode
   message: MessageType.Any
 }) => {
-  const { isDark } = useTheme()
-  const theme = useContext(ThemeContext)
-  const user = useContext(UserContext)
-  const currentUserIsAuthor = user?.id === message.author.id
+  const { isDark } = useTheme();
+  const theme = useContext(ThemeContext);
+  const user = useContext(UserContext);
+  const currentUserIsAuthor = user?.id === message.author.id;
   const { copyable, timings, completionResult, partialCompletionResult } =
-    message.metadata || {}
+    message.metadata || {};
 
-  const [showReasoning, setShowReasoning] = useState(false)
-  const [showToolCalls, setShowToolCalls] = useState(false)
+  const [showReasoning, setShowReasoning] = useState(false);
+  const [showToolCalls, setShowToolCalls] = useState(false);
 
-  const Container = copyable ? TouchableOpacity : View
+  const Container = copyable ? TouchableOpacity : View;
 
   // Theme-aware colors
-  const overlayBackground = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+  const overlayBackground = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
   const sectionBackground = isDark
     ? 'rgba(255,255,255,0.05)'
-    : 'rgba(0,0,0,0.05)'
-  const borderColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+    : 'rgba(0,0,0,0.05)';
+  const borderColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
   const textColor = (() => {
     if (currentUserIsAuthor) {
-      return 'rgba(255,255,255,0.8)'
+      return 'rgba(255,255,255,0.8)';
     }
-    return isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)'
-  })()
+    return isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)';
+  })();
   const contentTextColor = (() => {
     if (currentUserIsAuthor) {
-      return 'rgba(255,255,255,0.9)'
+      return 'rgba(255,255,255,0.9)';
     }
-    return isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)'
-  })()
+    return isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)';
+  })();
   const toolCallBackground = isDark
     ? 'rgba(255,255,255,0.1)'
-    : 'rgba(0,0,0,0.1)'
-  const timingTextColor = isDark ? '#999' : '#ccc'
+    : 'rgba(0,0,0,0.1)';
+  const timingTextColor = isDark ? '#999' : '#ccc';
 
   // Use partial data during streaming, fall back to final result
-  const currentResult = partialCompletionResult || completionResult
-  const hasReasoningContent = currentResult?.reasoning_content
+  const currentResult = partialCompletionResult || completionResult;
+  const hasReasoningContent = currentResult?.reasoning_content;
   const hasToolCalls =
-    currentResult?.tool_calls && currentResult.tool_calls.length > 0
+    currentResult?.tool_calls && currentResult.tool_calls.length > 0;
   // Check if we're in a streaming state (partial data available but no final content yet)
   const isStreamingReasoning =
-    partialCompletionResult && partialCompletionResult?.reasoning_content
+    partialCompletionResult && partialCompletionResult?.reasoning_content;
   const isStreamingToolCalls =
-    partialCompletionResult && partialCompletionResult?.tool_calls
+    partialCompletionResult && partialCompletionResult?.tool_calls;
 
   return (
     <Container
@@ -77,8 +77,8 @@ export const Bubble = ({
         overflow: 'hidden',
       }}
       onPress={() => {
-        if (message.type !== 'text') return
-        Clipboard.setString(message.text)
+        if (message.type !== 'text') {return;}
+        Clipboard.setString(message.text);
       }}
     >
       {/* Show toggle button for reasoning if available */}
@@ -229,5 +229,5 @@ export const Bubble = ({
         </Text>
       )}
     </Container>
-  )
-}
+  );
+};

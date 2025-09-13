@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,18 +7,18 @@ import {
   Alert,
   TouchableOpacity,
   Linking,
-} from 'react-native'
-import type { TTSParams } from '../utils/storage'
+} from 'react-native';
+import type { TTSParams } from '../utils/storage';
 import {
   saveTTSParams,
   loadTTSParams,
   resetTTSParams,
   DEFAULT_TTS_PARAMS,
-} from '../utils/storage'
-import { useParameterModal } from '../hooks/useParameterModal'
-import BaseParameterModal from './BaseParameterModal'
-import { createThemedStyles } from '../styles/commonStyles'
-import { useTheme } from '../contexts/ThemeContext'
+} from '../utils/storage';
+import { useParameterModal } from '../hooks/useParameterModal';
+import BaseParameterModal from './BaseParameterModal';
+import { createThemedStyles } from '../styles/commonStyles';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface TTSParamsModalProps {
   visible: boolean
@@ -31,13 +31,13 @@ export default function TTSParamsModal({
   onClose,
   onSave,
 }: TTSParamsModalProps) {
-  const { theme } = useTheme()
-  const themedStyles = createThemedStyles(theme.colors)
-  const [speakerConfigText, setSpeakerConfigText] = useState('')
+  const { theme } = useTheme();
+  const themedStyles = createThemedStyles(theme.colors);
+  const [speakerConfigText, setSpeakerConfigText] = useState('');
   const [validationResult, setValidationResult] = useState<{
     isValid: boolean
     message: string
-  }>({ isValid: true, message: '' })
+  }>({ isValid: true, message: '' });
 
   const styles = StyleSheet.create({
     textInput: {
@@ -81,7 +81,7 @@ export default function TTSParamsModal({
     invalidText: {
       color: theme.colors.error,
     },
-  })
+  });
 
   const {
     params,
@@ -95,76 +95,76 @@ export default function TTSParamsModal({
     saveParams: saveTTSParams,
     resetParams: resetTTSParams,
     defaultParams: DEFAULT_TTS_PARAMS,
-  })
+  });
 
   useEffect(() => {
     if (visible) {
-      loadParamsAsync()
+      loadParamsAsync();
     }
-  }, [loadParamsAsync, visible])
+  }, [loadParamsAsync, visible]);
 
   // Update text input when params change
   useEffect(() => {
     if (params.speakerConfig) {
       try {
-        setSpeakerConfigText(JSON.stringify(params.speakerConfig, null, 2))
-        setValidationResult({ isValid: true, message: 'Valid JSON format' })
+        setSpeakerConfigText(JSON.stringify(params.speakerConfig, null, 2));
+        setValidationResult({ isValid: true, message: 'Valid JSON format' });
       } catch {
-        setSpeakerConfigText('')
+        setSpeakerConfigText('');
       }
     } else {
-      setSpeakerConfigText('')
+      setSpeakerConfigText('');
       setValidationResult({
         isValid: true,
         message: 'No speaker config set (will use default)',
-      })
+      });
     }
-  }, [params.speakerConfig])
+  }, [params.speakerConfig]);
 
   const validateAndUpdateSpeakerConfig = (text: string) => {
-    setSpeakerConfigText(text)
+    setSpeakerConfigText(text);
 
     if (!text.trim()) {
-      updateParam('speakerConfig', null)
+      updateParam('speakerConfig', null);
       setValidationResult({
         isValid: true,
         message: 'No speaker config set (will use default)',
-      })
-      return
+      });
+      return;
     }
 
     try {
-      const parsed = JSON.parse(text)
-      updateParam('speakerConfig', parsed)
-      setValidationResult({ isValid: true, message: 'Valid JSON format' })
+      const parsed = JSON.parse(text);
+      updateParam('speakerConfig', parsed);
+      setValidationResult({ isValid: true, message: 'Valid JSON format' });
     } catch (error) {
       setValidationResult({
         isValid: false,
         message: `Invalid JSON: ${
           error instanceof Error ? error.message : 'Parse error'
         }`,
-      })
+      });
     }
-  }
+  };
 
   const onSaveHandler = () => {
     if (!validationResult.isValid) {
       Alert.alert(
         'Invalid Configuration',
         'Please fix the JSON format before saving.',
-      )
-      return
+      );
+      return;
     }
-    handleSave(onSave, onClose)
-  }
+    handleSave(onSave, onClose);
+  };
 
   const openSpeakerCreator = () => {
     const url =
-      'https://huggingface.co/spaces/BricksDisplay/OuteTTS-Speaker-Creator'
+      'https://huggingface.co/spaces/BricksDisplay/OuteTTS-Speaker-Creator';
     Linking.openURL(url).catch(() => {
-      Alert.alert('Error', `Could not open the link. Please visit: ${url}`)
-    })
-  }
+      Alert.alert('Error', `Could not open the link. Please visit: ${url}`);
+    });
+  };
 
   return (
     <BaseParameterModal
@@ -218,5 +218,5 @@ export default function TTSParamsModal({
         </Text>
       </View>
     </BaseParameterModal>
-  )
+  );
 }

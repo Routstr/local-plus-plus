@@ -1,5 +1,5 @@
-/* eslint-disable react/require-default-props */
-import React, { useState, useEffect } from 'react'
+
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,10 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-} from 'react-native'
-import { ModelDownloader } from '../services/ModelDownloader'
-import type { DownloadProgress } from '../services/ModelDownloader'
-import { useTheme } from '../contexts/ThemeContext'
+} from 'react-native';
+import { ModelDownloader } from '../services/ModelDownloader';
+import type { DownloadProgress } from '../services/ModelDownloader';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Common interfaces and types
 interface ModelFile {
@@ -221,16 +221,16 @@ const createStyles = (theme: any) => StyleSheet.create({
     color: theme.colors.textSecondary,
     fontWeight: '500',
   },
-})
+});
 
 // Common utility functions
 const formatSize = (bytes: number): string => {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${Math.round((bytes / Math.pow(k, i)) * 100) / 100} ${sizes[i]}`
-}
+  if (bytes === 0) {return '0 B';}
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${Math.round((bytes / Math.pow(k, i)) * 100) / 100} ${sizes[i]}`;
+};
 
 // Base component with shared logic
 function BaseModelDownloadCard({
@@ -244,136 +244,136 @@ function BaseModelDownloadCard({
   isLocalFile = false,
   hideInitializeButton = false,
 }: BaseModelDownloadCardProps) {
-  const { theme } = useTheme()
-  const styles = createStyles(theme)
-  const [isDownloaded, setIsDownloaded] = useState(false)
-  const [isDownloading, setIsDownloading] = useState(false)
-  const [progress, setProgress] = useState<DownloadProgress | null>(null)
-  const [filePaths, setFilePaths] = useState<string[]>([])
-  const [downloadStatus, setDownloadStatus] = useState<string>('')
-  const [useRowLayout, setUseRowLayout] = useState(true)
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
+  const [isDownloaded, setIsDownloaded] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [progress, setProgress] = useState<DownloadProgress | null>(null);
+  const [filePaths, setFilePaths] = useState<string[]>([]);
+  const [downloadStatus, setDownloadStatus] = useState<string>('');
+  const [useRowLayout, setUseRowLayout] = useState(true);
 
-  const downloader = new ModelDownloader()
+  const downloader = new ModelDownloader();
 
   const checkIfDownloaded = React.useCallback(async () => {
     try {
       const downloadStatuses = await Promise.all(
         files.map((file) => ModelDownloader.isModelDownloaded(file.filename)),
-      )
+      );
 
-      const allDownloaded = downloadStatuses.every((status) => status)
-      setIsDownloaded(allDownloaded)
+      const allDownloaded = downloadStatuses.every((status) => status);
+      setIsDownloaded(allDownloaded);
 
       if (allDownloaded) {
         const pathPromises = files.map((file) =>
           ModelDownloader.getModelPath(file.filename),
-        )
-        const paths = await Promise.all(pathPromises)
+        );
+        const paths = await Promise.all(pathPromises);
         // Filter out any null paths
-        const validPaths = paths.filter((path): path is string => path !== null)
+        const validPaths = paths.filter((path): path is string => path !== null);
         if (validPaths.length === files.length) {
-          setFilePaths(validPaths)
+          setFilePaths(validPaths);
         }
       }
     } catch (error) {
-      console.error('Error checking model status:', error)
+      console.error('Error checking model status:', error);
     }
-  }, [files])
+  }, [files]);
 
   useEffect(() => {
     if (isLocalFile) {
       // For local files, mark as downloaded immediately
-      setIsDownloaded(true)
-      setFilePaths([]) // We'll handle paths differently for local files
+      setIsDownloaded(true);
+      setFilePaths([]); // We'll handle paths differently for local files
     } else {
-      checkIfDownloaded()
+      checkIfDownloaded();
     }
-  }, [checkIfDownloaded, isLocalFile])
+  }, [checkIfDownloaded, isLocalFile]);
 
   const handleDownload = async () => {
-    if (isDownloading) return
+    if (isDownloading) {return;}
 
     try {
-      setIsDownloading(true)
-      setProgress({ written: 0, total: 0, percentage: 0 })
+      setIsDownloading(true);
+      setProgress({ written: 0, total: 0, percentage: 0 });
 
-      const paths: string[] = []
-      const progressWeight = 1 / files.length
+      const paths: string[] = [];
+      const progressWeight = 1 / files.length;
 
       // ESLint disable for intentional sequential downloads
-      /* eslint-disable no-await-in-loop */
+
       for (let i = 0; i < files.length; i += 1) {
-        const file = files[i]
+        const file = files[i];
         if (file) {
-          const statusText = file.label || `file ${i + 1}`
-          setDownloadStatus(`Downloading ${statusText}...`)
+          const statusText = file.label || `file ${i + 1}`;
+          setDownloadStatus(`Downloading ${statusText}...`);
 
           const path = await downloader.downloadModel(
             file.repo,
             file.filename,
             (prog) => {
-              const baseProgress = i * progressWeight * 100
-              const currentProgress = prog.percentage * progressWeight
+              const baseProgress = i * progressWeight * 100;
+              const currentProgress = prog.percentage * progressWeight;
               setProgress({
                 ...prog,
                 percentage: Math.round(baseProgress + currentProgress),
-              })
+              });
             },
-          )
+          );
 
-          paths.push(path)
+          paths.push(path);
         }
       }
-      /* eslint-enable no-await-in-loop */
 
-      setFilePaths(paths)
-      setIsDownloaded(true)
-      setProgress(null)
-      setDownloadStatus('')
+
+      setFilePaths(paths);
+      setIsDownloaded(true);
+      setProgress(null);
+      setDownloadStatus('');
 
       // Call onDownloaded callback if provided
       if (onDownloaded) {
-        onDownloaded(...paths)
+        onDownloaded(...paths);
       }
 
-      Alert.alert('Success', `${title} downloaded successfully!`)
+      Alert.alert('Success', `${title} downloaded successfully!`);
     } catch (error: any) {
       Alert.alert(
         'Download Failed',
         error.message || 'Failed to download model(s)',
-      )
-      setProgress(null)
-      setDownloadStatus('')
+      );
+      setProgress(null);
+      setDownloadStatus('');
     } finally {
-      setIsDownloading(false)
+      setIsDownloading(false);
     }
-  }
+  };
 
   const handleInitialize = async () => {
     if (isLocalFile) {
       // For local files, just call onInitialize
       if (onInitialize) {
-        onInitialize('')
+        onInitialize('');
       } else {
-        Alert.alert('Error', 'No initialization handler provided.')
+        Alert.alert('Error', 'No initialization handler provided.');
       }
     } else {
       // For downloaded files, check paths
       if (!isDownloaded || filePaths.length !== files.length) {
-        Alert.alert('Error', 'Model(s) not downloaded yet.')
-        return
+        Alert.alert('Error', 'Model(s) not downloaded yet.');
+        return;
       }
 
       if (onInitialize) {
-        onInitialize(...filePaths)
+        onInitialize(...filePaths);
       } else {
-        Alert.alert('Error', 'No initialization handler provided.')
+        Alert.alert('Error', 'No initialization handler provided.');
       }
     }
-  }
+  };
 
   const handleDelete = async () => {
-    const modelText = files.length > 1 ? 'Models' : 'Model'
+    const modelText = files.length > 1 ? 'Models' : 'Model';
     Alert.alert(
       `Delete ${modelText}`,
       `Are you sure you want to delete ${title}?`,
@@ -386,32 +386,32 @@ function BaseModelDownloadCard({
             try {
               await Promise.all(
                 files.map((file) => ModelDownloader.deleteModel(file.filename)),
-              )
-              setIsDownloaded(false)
-              setFilePaths([])
+              );
+              setIsDownloaded(false);
+              setFilePaths([]);
             } catch (error: any) {
               Alert.alert(
                 'Error',
                 `Failed to delete ${modelText.toLowerCase()}`,
-              )
+              );
             }
           },
         },
       ],
-    )
-  }
+    );
+  };
 
   const repoDisplay =
-    files.length === 1 && files[0] ? files[0].repo : `${files.length} files`
+    files.length === 1 && files[0] ? files[0].repo : `${files.length} files`;
 
   const handleLayout = (event: any) => {
-    const { width } = event.nativeEvent.layout
+    const { width } = event.nativeEvent.layout;
     // Switch to column layout if width is less than 300px (adjusted for Android)
-    const shouldUseRow = width < 300
+    const shouldUseRow = width < 300;
     if (shouldUseRow !== useRowLayout) {
-      setUseRowLayout(shouldUseRow)
+      setUseRowLayout(shouldUseRow);
     }
-  }
+  };
 
   return (
     <View style={styles.card} onLayout={handleLayout}>
@@ -494,7 +494,7 @@ function BaseModelDownloadCard({
         )}
       </View>
     </View>
-  )
+  );
 }
 
 // Simple single-model download card
@@ -509,7 +509,7 @@ function ModelDownloadCard({
   isLocalFile = false,
   hideInitializeButton = false,
 }: ModelDownloadCardProps) {
-  const files: ModelFile[] = [{ repo, filename }]
+  const files: ModelFile[] = [{ repo, filename }];
 
   return (
     <BaseModelDownloadCard
@@ -522,7 +522,7 @@ function ModelDownloadCard({
       isLocalFile={isLocalFile}
       hideInitializeButton={hideInitializeButton}
     />
-  )
+  );
 }
 
 // TTS-specific download card that handles both TTS model and vocoder together
@@ -539,7 +539,7 @@ export function TTSModelDownloadCard({
   const files: ModelFile[] = [
     { repo, filename, label: 'TTS model' },
     { repo: vocoder.repo, filename: vocoder.filename, label: 'vocoder' },
-  ]
+  ];
 
   return (
     <BaseModelDownloadCard
@@ -551,7 +551,7 @@ export function TTSModelDownloadCard({
       downloadButtonText="Download Both Models"
       initializeButtonText={initializeButtonText}
     />
-  )
+  );
 }
 
 // Multimodal-specific download card that handles both model and mmproj files
@@ -569,7 +569,7 @@ export function MtmdModelDownloadCard({
   const files: ModelFile[] = [
     { repo, filename, label: 'Model' },
     { repo, filename: mmproj, label: 'mmproj' },
-  ]
+  ];
 
   return (
     <BaseModelDownloadCard
@@ -582,7 +582,7 @@ export function MtmdModelDownloadCard({
       initializeButtonText={initializeButtonText}
       isLocalFile={isLocalFile}
     />
-  )
+  );
 }
 
-export default ModelDownloadCard
+export default ModelDownloadCard;

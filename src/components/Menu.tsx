@@ -1,8 +1,8 @@
-import React from 'react'
-import { Platform } from 'react-native'
-import { MenuView } from '@react-native-menu/menu'
-import Icon from '@react-native-vector-icons/material-design-icons'
-import { useTheme } from '../contexts/ThemeContext'
+import React from 'react';
+import { Platform } from 'react-native';
+import { MenuView } from '@react-native-menu/menu';
+import Icon from '@react-native-vector-icons/material-design-icons';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface MenuAction {
   id: string
@@ -17,7 +17,7 @@ interface MenuProps {
 }
 
 export function Menu({ icon = 'dots-vertical', actions }: MenuProps) {
-  const { theme } = useTheme()
+  const { theme } = useTheme();
 
   const menuActions = actions.map((action) => ({
     id: action.id,
@@ -26,12 +26,12 @@ export function Menu({ icon = 'dots-vertical', actions }: MenuProps) {
       ios: action.systemIcon || 'ellipsis.circle',
       android: 'ic_menu_more',
     }),
-  }))
+  }));
 
   const handleMenuAction = ({ nativeEvent }: { nativeEvent: { event: string } }) => {
-    const action = actions.find(a => a.id === nativeEvent.event)
-    action?.onPress()
-  }
+    const action = actions.find(a => a.id === nativeEvent.event);
+    action?.onPress();
+  };
 
   return (
     <MenuView
@@ -40,5 +40,5 @@ export function Menu({ icon = 'dots-vertical', actions }: MenuProps) {
     >
       <Icon name={icon} size={24} color={theme.colors.primary} />
     </MenuView>
-  )
+  );
 }

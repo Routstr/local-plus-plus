@@ -1,8 +1,8 @@
-import React from 'react'
-import { TouchableOpacity, Text, StyleSheet } from 'react-native'
-import type { EdgeInsets } from 'react-native-safe-area-context'
-import type { LlamaContext } from 'llama.rn'
-import { useTheme } from '../contexts/ThemeContext'
+import React from 'react';
+import { TouchableOpacity, StyleSheet } from 'react-native';
+import type { EdgeInsets } from 'react-native-safe-area-context';
+import type { LlamaContext } from 'llama.rn';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface StopButtonProps {
   context: LlamaContext | null
@@ -15,7 +15,7 @@ export const StopButton: React.FC<StopButtonProps> = ({
   insets,
   isLoading,
 }) => {
-  const { theme } = useTheme()
+  const { theme } = useTheme();
 
   const styles = StyleSheet.create({
     stopButtonContainer: {
@@ -34,10 +34,10 @@ export const StopButton: React.FC<StopButtonProps> = ({
       fontSize: 18,
       fontWeight: '700',
     },
-  })
+  });
 
   if (!isLoading) {
-    return null
+    return null;
   }
 
   return (
@@ -45,11 +45,11 @@ export const StopButton: React.FC<StopButtonProps> = ({
       style={[styles.stopButtonContainer, { bottom: insets.bottom + 14 }]}
       onPress={() => {
         if (context) {
-          context.stopCompletion()
+          context.stopCompletion();
         }
       }}
     >
       {/* <Text style={styles.stopButtonText}>■</Text> */}
     </TouchableOpacity>
-  )
-}
+  );
+};

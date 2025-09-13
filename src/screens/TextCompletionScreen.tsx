@@ -4,7 +4,7 @@ import React, {
   useRef,
   useLayoutEffect,
   useCallback,
-} from 'react'
+} from 'react';
 import {
   View,
   Text,
@@ -14,31 +14,34 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
-} from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import type { TokenData } from 'llama.rn'
-import ModelDownloadCard from '../components/ModelDownloadCard'
-import ContextParamsModal from '../components/ContextParamsModal'
-import CompletionParamsModal from '../components/CompletionParamsModal'
-import CustomModelModal from '../components/CustomModelModal'
-import CustomModelCard from '../components/CustomModelCard'
-import { HeaderButton } from '../components/HeaderButton'
-import { MaskedProgress } from '../components/MaskedProgress'
-import { ParameterTextInput } from '../components/ParameterFormFields'
-import { createThemedStyles } from '../styles/commonStyles'
-import { useTheme } from '../contexts/ThemeContext'
-import { MODELS } from '../utils/constants'
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { TokenData } from 'llama.rn';
+import ModelDownloadCard from '../components/ModelDownloadCard';
+import ModelDropdown from '../components/ModelDropdown';
+import type { UnifiedModelItemProps } from '../components/UnifiedModelItem';
+import { ModelDownloader } from '../services/ModelDownloader';
+import ContextParamsModal from '../components/ContextParamsModal';
+import CompletionParamsModal from '../components/CompletionParamsModal';
+import CustomModelModal from '../components/CustomModelModal';
+import CustomModelCard from '../components/CustomModelCard';
+import { HeaderButton } from '../components/HeaderButton';
+import { MaskedProgress } from '../components/MaskedProgress';
+import { ParameterTextInput } from '../components/ParameterFormFields';
+import { createThemedStyles } from '../styles/commonStyles';
+import { useTheme } from '../contexts/ThemeContext';
+import { MODELS } from '../utils/constants';
 import type {
   ContextParams,
   CompletionParams,
   CustomModel,
-} from '../utils/storage'
+} from '../utils/storage';
 import {
   loadContextParams,
   loadCompletionParams,
   loadCustomModels,
-} from '../utils/storage'
-import { initLlama, LlamaContext } from 'llama.rn'
+} from '../utils/storage';
+import { initLlama, LlamaContext } from 'llama.rn';
 
 
 interface ProbabilityDropdownProps {
@@ -85,7 +88,7 @@ function ProbabilityDropdown({
       fontWeight: '600' as '600',
       marginLeft: 8,
     },
-  }
+  };
 
   return (
     <Modal transparent visible animationType="fade" onRequestClose={onClose}>
@@ -109,7 +112,7 @@ function ProbabilityDropdown({
         </View>
       </TouchableOpacity>
     </Modal>
-  )
+  );
 }
 
 export default function TextCompletionScreen({
@@ -117,8 +120,8 @@ export default function TextCompletionScreen({
 }: {
   navigation: any
 }) {
-  const { theme, isDark } = useTheme()
-  const themedStyles = createThemedStyles(theme.colors)
+  const { theme, isDark } = useTheme();
+  const themedStyles = createThemedStyles(theme.colors);
 
   const styles = StyleSheet.create({
     container: themedStyles.container,
@@ -218,71 +221,74 @@ export default function TextCompletionScreen({
     stopButton: {
       backgroundColor: theme.colors.error,
     },
-  })
-  const [prompt, setPrompt] = useState('')
-  const [grammar, setGrammar] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [context, setContext] = useState<LlamaContext | null>(null)
-  const [isModelReady, setIsModelReady] = useState(false)
-  const [initProgress, setInitProgress] = useState(0)
-  const [showContextParamsModal, setShowContextParamsModal] = useState(false)
+  });
+  const [prompt, setPrompt] = useState('');
+  const [grammar, setGrammar] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [context, setContext] = useState<LlamaContext | null>(null);
+  const [isModelReady, setIsModelReady] = useState(false);
+  const [initProgress, setInitProgress] = useState(0);
+  const [showContextParamsModal, setShowContextParamsModal] = useState(false);
   const [showCompletionParamsModal, setShowCompletionParamsModal] =
-    useState(false)
-  const [showCustomModelModal, setShowCustomModelModal] = useState(false)
-  const [contextParams, setContextParams] = useState<ContextParams | null>(null)
+    useState(false);
+  const [showCustomModelModal, setShowCustomModelModal] = useState(false);
+  const [contextParams, setContextParams] = useState<ContextParams | null>(null);
   const [completionParams, setCompletionParams] =
-    useState<CompletionParams | null>(null)
-  const [customModels, setCustomModels] = useState<CustomModel[]>([])
-  const [tokens, setTokens] = useState<TokenData[]>([])
+    useState<CompletionParams | null>(null);
+  const [customModels, setCustomModels] = useState<CustomModel[]>([]);
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const [selectedModelName, setSelectedModelName] = useState<string>('Select a model');
+  const [selectedModelId, setSelectedModelId] = useState<string | undefined>();
+  const [tokens, setTokens] = useState<TokenData[]>([]);
   const [selectedToken, setSelectedToken] = useState<{
     token: TokenData
     position: { x: number; y: number }
-  } | null>(null)
-  const [isEditingResult, setIsEditingResult] = useState(false)
-  const [editableResult, setEditableResult] = useState('')
-  const [formattedPrompt, setFormattedPrompt] = useState('')
-  const [promptTokens, setPromptTokens] = useState<string[]>([])
-  const abortControllerRef = useRef<AbortController | null>(null)
-  const insets = useSafeAreaInsets()
+  } | null>(null);
+  const [isEditingResult, setIsEditingResult] = useState(false);
+  const [editableResult, setEditableResult] = useState('');
+  const [formattedPrompt, setFormattedPrompt] = useState('');
+  const [promptTokens, setPromptTokens] = useState<string[]>([]);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const insets = useSafeAreaInsets();
 
   useEffect(
     () => () => {
       if (context) {
-        context.release()
+        context.release();
       }
     },
     [context],
-  )
+  );
 
   useEffect(() => {
     const loadCustomModelsData = async () => {
       try {
-        const models = await loadCustomModels()
-        setCustomModels(models)
+        const models = await loadCustomModels();
+        setCustomModels(models);
       } catch (error) {
-        console.error('Error loading custom models:', error)
+        console.error('Error loading custom models:', error);
       }
-    }
-    loadCustomModelsData()
-  }, [])
+    };
+    loadCustomModelsData();
+  }, []);
 
   useEffect(() => {
     const loadParams = async () => {
       try {
-        const ctxParams = await loadContextParams()
-        const compParams = await loadCompletionParams()
-        setContextParams(ctxParams)
+        const ctxParams = await loadContextParams();
+        const compParams = await loadCompletionParams();
+        setContextParams(ctxParams);
         setCompletionParams({
           ...compParams,
           n_probs: 5,
-        })
+        });
       } catch (error) {
-        console.error('Error loading params:', error)
+        console.error('Error loading params:', error);
       }
-    }
-    loadParams()
-  }, [])
+    };
+    loadParams();
+  }, []);
 
   const handleReset = useCallback(() => {
     Alert.alert(
@@ -297,9 +303,9 @@ export default function TextCompletionScreen({
           text: 'Reset',
           style: 'destructive',
           onPress: async () => {
-            setTokens([])
-            setIsEditingResult(false)
-            setEditableResult('')
+            setTokens([]);
+            setIsEditingResult(false);
+            setEditableResult('');
             if (context) {
               try {
                 const defaultMessages = [
@@ -311,62 +317,64 @@ export default function TextCompletionScreen({
                     role: 'user' as const,
                     content: 'Hello! Please introduce yourself.',
                   },
-                ]
+                ];
                 const formatted = await context.getFormattedChat(
                   defaultMessages,
                   null,
                   { jinja: true },
-                )
-                setPrompt(formatted.prompt)
-                setFormattedPrompt(formatted.prompt)
-                const tokenized = await context.tokenize(formatted.prompt)
+                );
+                setPrompt(formatted.prompt);
+                setFormattedPrompt(formatted.prompt);
+                const tokenized = await context.tokenize(formatted.prompt);
                 const detokenizedTokens = await Promise.all(
                   tokenized.tokens.map((token) => context.detokenize([token])),
-                )
-                setPromptTokens(detokenizedTokens)
+                );
+                setPromptTokens(detokenizedTokens);
               } catch (formatError) {
-                console.warn('Failed to format default prompt:', formatError)
-                const fallbackPrompt = 'Hello! Please introduce yourself.'
-                setPrompt(fallbackPrompt)
-                setFormattedPrompt(fallbackPrompt)
-                setPromptTokens([])
+                console.warn('Failed to format default prompt:', formatError);
+                const fallbackPrompt = 'Hello! Please introduce yourself.';
+                setPrompt(fallbackPrompt);
+                setFormattedPrompt(fallbackPrompt);
+                setPromptTokens([]);
               }
             }
           },
         },
       ],
-    )
-  }, [context])
+    );
+  }, [context]);
 
   // Set up navigation header buttons
   useLayoutEffect(() => {
-    if (isModelReady) {
-      navigation.setOptions({
-        headerRight: () => (
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <HeaderButton iconName="refresh" onPress={handleReset} />
-            <HeaderButton
-              iconName="cog-outline"
-              onPress={() => setShowCompletionParamsModal(true)}
-            />
-          </View>
-        ),
-      })
-    } else {
-      navigation.setOptions({
-        headerRight: () => (
+    navigation.setOptions({
+      headerTitle: () => (
+        <TouchableOpacity
+          onPress={() => setShowModelDropdown(true)}
+          style={{ flexDirection: 'row', alignItems: 'center' }}
+        >
+          <Text style={{ fontSize: 17, fontWeight: '600', color: theme.colors.text }}>
+            {selectedModelName}
+          </Text>
+          <Text style={{ marginLeft: 6, fontSize: 16, color: theme.colors.textSecondary }}>
+            ▼
+          </Text>
+        </TouchableOpacity>
+      ),
+      headerRight: () => (
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {isModelReady && <HeaderButton iconName="refresh" onPress={handleReset} />}
           <HeaderButton
             iconName="cog-outline"
-            onPress={() => setShowContextParamsModal(true)}
+            onPress={() => isModelReady ? setShowCompletionParamsModal(true) : setShowContextParamsModal(true)}
           />
-        ),
-      })
-    }
-  }, [navigation, isModelReady, handleReset])
+        </View>
+      ),
+    });
+  }, [navigation, isModelReady, selectedModelName, theme, handleReset]);
 
   const handleInitModel = async (modelUri: string, params?: ContextParams) => {
-    setIsLoading(true)
-    setInitProgress(0)
+    setIsLoading(true);
+    setInitProgress(0);
     try {
       const ctx = await initLlama(
         {
@@ -375,78 +383,78 @@ export default function TextCompletionScreen({
           ...(params || contextParams || {}),
         },
         (progress) => {
-          setInitProgress(progress)
+          setInitProgress(progress);
         },
-      )
-      console.log('Model initialized')
-      setContext(ctx)
-      setIsModelReady(true)
-      setInitProgress(100)
+      );
+      console.log('Model initialized');
+      setContext(ctx);
+      setIsModelReady(true);
+      setInitProgress(100);
 
       // Set default system/user message format as initial prompt
       const defaultMessages = [
         { role: 'system' as const, content: 'You are a helpful AI assistant.' },
         { role: 'user' as const, content: 'Hello! Please introduce yourself.' },
-      ]
+      ];
       try {
         const formatted = await ctx.getFormattedChat(defaultMessages, null, {
           jinja: true,
-        })
-        setPrompt(formatted.prompt)
-        setFormattedPrompt(formatted.prompt) // Store the formatted prompt
+        });
+        setPrompt(formatted.prompt);
+        setFormattedPrompt(formatted.prompt); // Store the formatted prompt
         // Tokenize the prompt to show individual tokens
-        const tokenized = await ctx.tokenize(formatted.prompt)
+        const tokenized = await ctx.tokenize(formatted.prompt);
         const detokenizedTokens = await Promise.all(
           tokenized.tokens.map((token) => ctx.detokenize([token])),
-        )
-        setPromptTokens(detokenizedTokens)
+        );
+        setPromptTokens(detokenizedTokens);
       } catch (formatError) {
-        console.warn('Failed to format default prompt:', formatError)
-        const fallbackPrompt = 'Hello! Please introduce yourself.'
-        setPrompt(fallbackPrompt)
-        setFormattedPrompt(fallbackPrompt)
+        console.warn('Failed to format default prompt:', formatError);
+        const fallbackPrompt = 'Hello! Please introduce yourself.';
+        setPrompt(fallbackPrompt);
+        setFormattedPrompt(fallbackPrompt);
       }
     } catch (error) {
-      Alert.alert('Error', `Failed to initialize model: ${error}`)
+      Alert.alert('Error', `Failed to initialize model: ${error}`);
     } finally {
-      setIsLoading(false)
-      setInitProgress(0)
+      setIsLoading(false);
+      setInitProgress(0);
     }
-  }
+  };
 
   const handleSaveContextParams = (params: ContextParams) => {
-    setContextParams(params)
-  }
+    setContextParams(params);
+  };
 
   const handleSaveCompletionParams = (params: CompletionParams) => {
     setCompletionParams({
       ...params,
       n_probs: params.n_probs || 5,
-    })
-  }
+    });
+  };
 
   const getTokenColor = (prob?: number): string => {
-    if (prob === undefined) return 'transparent'
-    const normalizedProb = Math.max(0, Math.min(1, prob))
-    const red = Math.round(255 * (1 - normalizedProb))
-    const green = Math.round(255 * normalizedProb)
-    return `rgba(${red}, ${green}, 0, 0.3)`
-  }
+    if (prob === undefined) {return 'transparent';}
+    const normalizedProb = Math.max(0, Math.min(1, prob));
+    const red = Math.round(255 * (1 - normalizedProb));
+    const green = Math.round(255 * normalizedProb);
+    return `rgba(${red}, ${green}, 0, 0.3)`;
+  };
 
   const handleGenerate = async () => {
     if (!context || !formattedPrompt) {
-      Alert.alert('Error', 'Please enter a prompt')
-      return
+      Alert.alert('Error', 'Please enter a prompt');
+      return;
     }
 
-    setIsGenerating(true)
-    setIsEditingResult(false)
-    const controller = new AbortController()
-    abortControllerRef.current = controller
+    setIsGenerating(true);
+    setIsEditingResult(false);
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     // Use the complete text (formatted prompt + any existing generated tokens) as the prompt
-    const existingGenerated = tokens.map((t) => t.token).join('')
-    const fullPrompt = formattedPrompt + existingGenerated
+    const existingGenerated = tokens.map((t) => t.token).join('');
+    const fullPrompt = formattedPrompt + existingGenerated;
 
     try {
       await context.completion(
@@ -457,35 +465,99 @@ export default function TextCompletionScreen({
           ...completionParams,
         },
         (tokenData) => {
-          setTokens((prev) => [...prev, tokenData])
+          setTokens((prev) => [...prev, tokenData]);
         },
-      )
-      console.log('Completion finished')
+      );
+      console.log('Completion finished');
     } catch (error) {
       if (error !== 'aborted') {
-        Alert.alert('Error', `Failed to generate: ${error}`)
+        Alert.alert('Error', `Failed to generate: ${error}`);
       }
     } finally {
-      setIsGenerating(false)
-      abortControllerRef.current = null
+      setIsGenerating(false);
+      abortControllerRef.current = null;
     }
-  }
+  };
 
   const handleStop = async () => {
     if (context) {
       try {
-        await context.stopCompletion()
+        await context.stopCompletion();
       } catch (error) {
-        console.warn('Failed to stop completion:', error)
+        console.warn('Failed to stop completion:', error);
       }
     }
     if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
+      abortControllerRef.current.abort();
     }
-  }
+  };
+
+  const handleSelectModel = async (model: UnifiedModelItemProps) => {
+    if (model.type === 'routstr') {
+      Alert.alert('Not Supported', 'Routstr models are not supported for text completion yet.');
+      return;
+    }
+
+    setSelectedModelName(model.name);
+    setSelectedModelId(model.id);
+
+    // Check if model is downloaded
+    if (model.filename) {
+      const isDownloaded = await ModelDownloader.isModelDownloaded(model.filename);
+      if (isDownloaded) {
+        const modelPath = await ModelDownloader.getModelPath(model.filename);
+        if (modelPath) {
+          await handleInitModel(modelPath);
+        }
+      } else {
+        Alert.alert(
+          'Model Not Downloaded',
+          `Please download ${model.name} from the model list below.`,
+          [{ text: 'OK' }]
+        );
+      }
+    }
+  };
+
+  // Build model groups for dropdown
+  const modelGroups = [
+    {
+      title: 'Local Models',
+      models: [
+        'SMOL_LM_3',
+        'GEMMA_3_4B_QAT',
+        'QWEN_3_4B',
+        'GEMMA_3N_E2B',
+        'GEMMA_3N_E4B',
+      ].map((modelKey) => {
+        const modelInfo = MODELS[modelKey as keyof typeof MODELS];
+        return {
+          id: modelKey,
+          name: modelInfo.name,
+          type: 'local' as const,
+          repo: modelInfo.repo,
+          filename: modelInfo.filename,
+          size: modelInfo.size,
+          onSelect: () => {},
+        } as UnifiedModelItemProps;
+      }),
+    },
+    {
+      title: 'Custom Models',
+      models: customModels.map((model) => ({
+        id: model.id,
+        name: model.name,
+        type: 'local' as const,
+        repo: model.hfRepoId || '',
+        filename: model.filename || '',
+        size: '',
+        onSelect: () => {},
+      } as UnifiedModelItemProps)),
+    },
+  ];
 
   const handleTokenPress = (event: any, token: TokenData) => {
-    if (!token.completion_probabilities?.[0]?.probs) return
+    if (!token.completion_probabilities?.[0]?.probs) {return;}
 
     event.currentTarget.measure(
       (
@@ -499,10 +571,10 @@ export default function TextCompletionScreen({
         setSelectedToken({
           token,
           position: { x: pageX, y: pageY + _height },
-        })
+        });
       },
-    )
-  }
+    );
+  };
 
   const renderContent = () => {
     if (!isModelReady) {
@@ -522,10 +594,13 @@ export default function TextCompletionScreen({
                   <CustomModelCard
                     key={model.id}
                     model={model}
-                    onInitialize={(modelPath) => handleInitModel(modelPath)}
+                    onInitialize={(modelPath) => {
+                      setSelectedModelName(model.name);
+                      handleInitModel(modelPath);
+                    }}
                     onModelRemoved={async () => {
-                      const models = await loadCustomModels()
-                      setCustomModels(models)
+                      const models = await loadCustomModels();
+                      setCustomModels(models);
                     }}
                     initializeButtonText="Initialize"
                   />
@@ -552,7 +627,7 @@ export default function TextCompletionScreen({
               'GEMMA_3N_E2B',
               'GEMMA_3N_E4B',
             ].map((modelKey) => {
-              const model = MODELS[modelKey as keyof typeof MODELS]
+              const model = MODELS[modelKey as keyof typeof MODELS];
               return (
                 <ModelDownloadCard
                   key={modelKey}
@@ -560,9 +635,12 @@ export default function TextCompletionScreen({
                   repo={model.repo}
                   filename={model.filename}
                   size={model.size}
-                  onInitialize={(modelPath) => handleInitModel(modelPath)}
+                  onInitialize={(modelPath) => {
+                    setSelectedModelName(modelInfo.name);
+                    handleInitModel(modelPath);
+                  }}
                 />
-              )
+              );
             })}
           </ScrollView>
 
@@ -573,7 +651,7 @@ export default function TextCompletionScreen({
             showProgressBar={initProgress > 0}
           />
         </View>
-      )
+      );
     }
 
     return (
@@ -604,43 +682,43 @@ export default function TextCompletionScreen({
                       onPress={async () => {
                         // Check if the text has actually changed before re-tokenizing
                         const originalText =
-                          formattedPrompt + tokens.map((t) => t.token).join('')
-                        const hasChanges = editableResult !== originalText
+                          formattedPrompt + tokens.map((t) => t.token).join('');
+                        const hasChanges = editableResult !== originalText;
 
                         if (context && editableResult && hasChanges) {
                           try {
                             // Tokenize the entire edited text to show as prompt tokens
                             const tokenized = await context.tokenize(
                               editableResult,
-                            )
+                            );
                             const detokenizedTokens = await Promise.all(
                               tokenized.tokens.map((token) =>
                                 context.detokenize([token]),
                               ),
-                            )
-                            setPromptTokens(detokenizedTokens)
+                            );
+                            setPromptTokens(detokenizedTokens);
 
                             // Update the prompt and formatted prompt
-                            setPrompt(editableResult)
-                            setFormattedPrompt(editableResult)
+                            setPrompt(editableResult);
+                            setFormattedPrompt(editableResult);
 
                             // Clear the generated tokens since we're now showing everything as prompt
-                            setTokens([])
+                            setTokens([]);
                           } catch (error) {
                             console.warn(
                               'Failed to tokenize edited text:',
                               error,
-                            )
+                            );
                           }
                         }
-                        setIsEditingResult(false)
+                        setIsEditingResult(false);
                       }}
                     >
                       <Text style={styles.editButtonText}>Done</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
-              )
+              );
             }
 
             return (
@@ -660,7 +738,7 @@ export default function TextCompletionScreen({
                   ))}
                   {tokens.map((token, index) => {
                     const firstProb =
-                      token.completion_probabilities?.[0]?.probs?.[0]?.prob
+                      token.completion_probabilities?.[0]?.probs?.[0]?.prob;
                     return (
                       <TouchableOpacity
                         key={`gen-${index}`}
@@ -676,7 +754,7 @@ export default function TextCompletionScreen({
                             : token.token}
                         </Text>
                       </TouchableOpacity>
-                    )
+                    );
                   })}
                 </View>
                 <View style={styles.editButtonContainer}>
@@ -685,16 +763,16 @@ export default function TextCompletionScreen({
                     onPress={() => {
                       // Combine formatted prompt + generated text for editing
                       const fullText =
-                        formattedPrompt + tokens.map((t) => t.token).join('')
-                      setEditableResult(fullText)
-                      setIsEditingResult(true)
+                        formattedPrompt + tokens.map((t) => t.token).join('');
+                      setEditableResult(fullText);
+                      setIsEditingResult(true);
                     }}
                   >
                     <Text style={styles.editButtonText}>Edit</Text>
                   </TouchableOpacity>
                 </View>
               </View>
-            )
+            );
           })()}
         </View>
 
@@ -742,11 +820,11 @@ export default function TextCompletionScreen({
             value={completionParams?.top_k?.toString() || '40'}
             onChangeText={(text) => {
               if (text === '') {
-                setCompletionParams((prev) => ({ ...prev!, top_k: undefined }))
+                setCompletionParams((prev) => ({ ...prev!, top_k: undefined }));
               } else {
-                const value = parseInt(text)
+                const value = parseInt(text);
                 if (!Number.isNaN(value)) {
-                  setCompletionParams((prev) => ({ ...prev!, top_k: value }))
+                  setCompletionParams((prev) => ({ ...prev!, top_k: value }));
                 }
               }
             }}
@@ -760,11 +838,11 @@ export default function TextCompletionScreen({
             value={completionParams?.min_p?.toString() || '0.05'}
             onChangeText={(text) => {
               if (text === '') {
-                setCompletionParams((prev) => ({ ...prev!, min_p: undefined }))
+                setCompletionParams((prev) => ({ ...prev!, min_p: undefined }));
               } else {
-                const value = parseFloat(text)
+                const value = parseFloat(text);
                 if (!Number.isNaN(value)) {
-                  setCompletionParams((prev) => ({ ...prev!, min_p: value }))
+                  setCompletionParams((prev) => ({ ...prev!, min_p: value }));
                 }
               }
             }}
@@ -781,14 +859,14 @@ export default function TextCompletionScreen({
                 setCompletionParams((prev) => ({
                   ...prev!,
                   typical_p: undefined,
-                }))
+                }));
               } else {
-                const value = parseFloat(text)
+                const value = parseFloat(text);
                 if (!Number.isNaN(value)) {
                   setCompletionParams((prev) => ({
                     ...prev!,
                     typical_p: value,
-                  }))
+                  }));
                 }
               }
             }}
@@ -805,14 +883,14 @@ export default function TextCompletionScreen({
                 setCompletionParams((prev) => ({
                   ...prev!,
                   penalty_repeat: undefined,
-                }))
+                }));
               } else {
-                const value = parseFloat(text)
+                const value = parseFloat(text);
                 if (!Number.isNaN(value)) {
                   setCompletionParams((prev) => ({
                     ...prev!,
                     penalty_repeat: value,
-                  }))
+                  }));
                 }
               }
             }}
@@ -829,14 +907,14 @@ export default function TextCompletionScreen({
                 setCompletionParams((prev) => ({
                   ...prev!,
                   xtc_probability: undefined,
-                }))
+                }));
               } else {
-                const value = parseFloat(text)
+                const value = parseFloat(text);
                 if (!Number.isNaN(value)) {
                   setCompletionParams((prev) => ({
                     ...prev!,
                     xtc_probability: value,
-                  }))
+                  }));
                 }
               }
             }}
@@ -853,14 +931,14 @@ export default function TextCompletionScreen({
                 setCompletionParams((prev) => ({
                   ...prev!,
                   xtc_threshold: undefined,
-                }))
+                }));
               } else {
-                const value = parseFloat(text)
+                const value = parseFloat(text);
                 if (!Number.isNaN(value)) {
                   setCompletionParams((prev) => ({
                     ...prev!,
                     xtc_threshold: value,
-                  }))
+                  }));
                 }
               }
             }}
@@ -877,14 +955,14 @@ export default function TextCompletionScreen({
                 setCompletionParams((prev) => ({
                   ...prev!,
                   penalty_last_n: undefined,
-                }))
+                }));
               } else {
-                const value = parseInt(text)
+                const value = parseInt(text);
                 if (!Number.isNaN(value)) {
                   setCompletionParams((prev) => ({
                     ...prev!,
                     penalty_last_n: value,
-                  }))
+                  }));
                 }
               }
             }}
@@ -901,14 +979,14 @@ export default function TextCompletionScreen({
                 setCompletionParams((prev) => ({
                   ...prev!,
                   penalty_freq: undefined,
-                }))
+                }));
               } else {
-                const value = parseFloat(text)
+                const value = parseFloat(text);
                 if (!Number.isNaN(value)) {
                   setCompletionParams((prev) => ({
                     ...prev!,
                     penalty_freq: value,
-                  }))
+                  }));
                 }
               }
             }}
@@ -925,14 +1003,14 @@ export default function TextCompletionScreen({
                 setCompletionParams((prev) => ({
                   ...prev!,
                   penalty_present: undefined,
-                }))
+                }));
               } else {
-                const value = parseFloat(text)
+                const value = parseFloat(text);
                 if (!Number.isNaN(value)) {
                   setCompletionParams((prev) => ({
                     ...prev!,
                     penalty_present: value,
-                  }))
+                  }));
                 }
               }
             }}
@@ -949,11 +1027,11 @@ export default function TextCompletionScreen({
                 setCompletionParams((prev) => ({
                   ...prev!,
                   mirostat: undefined,
-                }))
+                }));
               } else {
-                const value = parseInt(text)
+                const value = parseInt(text);
                 if (!Number.isNaN(value)) {
-                  setCompletionParams((prev) => ({ ...prev!, mirostat: value }))
+                  setCompletionParams((prev) => ({ ...prev!, mirostat: value }));
                 }
               }
             }}
@@ -970,14 +1048,14 @@ export default function TextCompletionScreen({
                 setCompletionParams((prev) => ({
                   ...prev!,
                   mirostat_tau: undefined,
-                }))
+                }));
               } else {
-                const value = parseFloat(text)
+                const value = parseFloat(text);
                 if (!Number.isNaN(value)) {
                   setCompletionParams((prev) => ({
                     ...prev!,
                     mirostat_tau: value,
-                  }))
+                  }));
                 }
               }
             }}
@@ -994,14 +1072,14 @@ export default function TextCompletionScreen({
                 setCompletionParams((prev) => ({
                   ...prev!,
                   mirostat_eta: undefined,
-                }))
+                }));
               } else {
-                const value = parseFloat(text)
+                const value = parseFloat(text);
                 if (!Number.isNaN(value)) {
                   setCompletionParams((prev) => ({
                     ...prev!,
                     mirostat_eta: value,
-                  }))
+                  }));
                 }
               }
             }}
@@ -1018,14 +1096,14 @@ export default function TextCompletionScreen({
                 setCompletionParams((prev) => ({
                   ...prev!,
                   dry_multiplier: undefined,
-                }))
+                }));
               } else {
-                const value = parseFloat(text)
+                const value = parseFloat(text);
                 if (!Number.isNaN(value)) {
                   setCompletionParams((prev) => ({
                     ...prev!,
                     dry_multiplier: value,
-                  }))
+                  }));
                 }
               }
             }}
@@ -1042,11 +1120,11 @@ export default function TextCompletionScreen({
                 setCompletionParams((prev) => ({
                   ...prev!,
                   dry_base: undefined,
-                }))
+                }));
               } else {
-                const value = parseFloat(text)
+                const value = parseFloat(text);
                 if (!Number.isNaN(value)) {
-                  setCompletionParams((prev) => ({ ...prev!, dry_base: value }))
+                  setCompletionParams((prev) => ({ ...prev!, dry_base: value }));
                 }
               }
             }}
@@ -1063,14 +1141,14 @@ export default function TextCompletionScreen({
                 setCompletionParams((prev) => ({
                   ...prev!,
                   dry_allowed_length: undefined,
-                }))
+                }));
               } else {
-                const value = parseInt(text)
+                const value = parseInt(text);
                 if (!Number.isNaN(value)) {
                   setCompletionParams((prev) => ({
                     ...prev!,
                     dry_allowed_length: value,
-                  }))
+                  }));
                 }
               }
             }}
@@ -1087,14 +1165,14 @@ export default function TextCompletionScreen({
                 setCompletionParams((prev) => ({
                   ...prev!,
                   dry_penalty_last_n: undefined,
-                }))
+                }));
               } else {
-                const value = parseInt(text)
+                const value = parseInt(text);
                 if (!Number.isNaN(value)) {
                   setCompletionParams((prev) => ({
                     ...prev!,
                     dry_penalty_last_n: value,
-                  }))
+                  }));
                 }
               }
             }}
@@ -1111,14 +1189,14 @@ export default function TextCompletionScreen({
                 setCompletionParams((prev) => ({
                   ...prev!,
                   top_n_sigma: undefined,
-                }))
+                }));
               } else {
-                const value = parseFloat(text)
+                const value = parseFloat(text);
                 if (!Number.isNaN(value)) {
                   setCompletionParams((prev) => ({
                     ...prev!,
                     top_n_sigma: value,
-                  }))
+                  }));
                 }
               }
             }}
@@ -1132,11 +1210,11 @@ export default function TextCompletionScreen({
             value={completionParams?.seed?.toString() || '-1'}
             onChangeText={(text) => {
               if (text === '') {
-                setCompletionParams((prev) => ({ ...prev!, seed: undefined }))
+                setCompletionParams((prev) => ({ ...prev!, seed: undefined }));
               } else {
-                const value = parseInt(text)
+                const value = parseInt(text);
                 if (!Number.isNaN(value)) {
-                  setCompletionParams((prev) => ({ ...prev!, seed: value }))
+                  setCompletionParams((prev) => ({ ...prev!, seed: value }));
                 }
               }
             }}
@@ -1145,8 +1223,8 @@ export default function TextCompletionScreen({
           />
         </View>
       </ScrollView>
-    )
-  }
+    );
+  };
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
@@ -1176,12 +1254,22 @@ export default function TextCompletionScreen({
         visible={showCustomModelModal}
         onClose={() => setShowCustomModelModal(false)}
         onModelAdded={async () => {
-          const models = await loadCustomModels()
-          setCustomModels(models)
+          const models = await loadCustomModels();
+          setCustomModels(models);
         }}
         title="Add Custom Model"
         enableFileSelection
       />
+
+      <ModelDropdown
+        visible={showModelDropdown}
+        onClose={() => setShowModelDropdown(false)}
+        selectedModelId={selectedModelId}
+        onSelectModel={handleSelectModel}
+        modelGroups={modelGroups}
+        currentModelName={selectedModelName}
+        onAddCustomModel={() => setShowCustomModelModal(true)}
+      />
     </View>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useLayoutEffect } from 'react'
+import React, { useState, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -8,35 +8,35 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-} from 'react-native'
-import { saveDocuments } from '@react-native-documents/picker'
-import ReactNativeBlobUtil from 'react-native-blob-util'
-import { TTSModelDownloadCard } from '../components/ModelDownloadCard'
-import ContextParamsModal from '../components/ContextParamsModal'
-import CompletionParamsModal from '../components/CompletionParamsModal'
-import TTSParamsModal from '../components/TTSParamsModal'
-import { AudioPlayer } from '../components/AudioPlayer'
-import { createThemedStyles } from '../styles/commonStyles'
-import { useTheme } from '../contexts/ThemeContext'
-import { MODELS } from '../utils/constants'
+} from 'react-native';
+import { saveDocuments } from '@react-native-documents/picker';
+import ReactNativeBlobUtil from 'react-native-blob-util';
+import { TTSModelDownloadCard } from '../components/ModelDownloadCard';
+import ContextParamsModal from '../components/ContextParamsModal';
+import CompletionParamsModal from '../components/CompletionParamsModal';
+import TTSParamsModal from '../components/TTSParamsModal';
+import { AudioPlayer } from '../components/AudioPlayer';
+import { createThemedStyles } from '../styles/commonStyles';
+import { useTheme } from '../contexts/ThemeContext';
+import { MODELS } from '../utils/constants';
 import type {
   ContextParams,
   CompletionParams,
   TTSParams,
-} from '../utils/storage'
+} from '../utils/storage';
 import {
   loadContextParams,
   loadCompletionParams,
   loadTTSParams,
-} from '../utils/storage'
-import { HeaderButton } from '../components/HeaderButton'
-import { MaskedProgress } from '../components/MaskedProgress'
-import { createWavFile } from '../utils/audioUtils'
-import { initLlama, LlamaContext } from 'llama.rn'
+} from '../utils/storage';
+import { HeaderButton } from '../components/HeaderButton';
+import { MaskedProgress } from '../components/MaskedProgress';
+import { createWavFile } from '../utils/audioUtils';
+import { initLlama, LlamaContext } from 'llama.rn';
 
 export default function TTSScreen({ navigation }: { navigation: any }) {
-  const { theme } = useTheme()
-  const themedStyles = createThemedStyles(theme.colors)
+  const { theme } = useTheme();
+  const themedStyles = createThemedStyles(theme.colors);
 
   const styles = StyleSheet.create({
     // Using themed styles for common patterns
@@ -136,69 +136,69 @@ export default function TTSScreen({ navigation }: { navigation: any }) {
     audioSection: {
       marginBottom: 24,
     },
-  })
-  const [inputText, setInputText] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [context, setContext] = useState<LlamaContext | null>(null)
-  const [isModelReady, setIsModelReady] = useState(false)
-  const [isVocoderReady, setIsVocoderReady] = useState(false)
-  const [generatedAudio, setGeneratedAudio] = useState<string | null>(null)
-  const [audioData, setAudioData] = useState<Float32Array | null>(null)
-  const [sampleRate, setSampleRate] = useState<number>(24000)
-  const [initProgress, setInitProgress] = useState(0)
-  const [showContextParamsModal, setShowContextParamsModal] = useState(false)
+  });
+  const [inputText, setInputText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [context, setContext] = useState<LlamaContext | null>(null);
+  const [isModelReady, setIsModelReady] = useState(false);
+  const [isVocoderReady, setIsVocoderReady] = useState(false);
+  const [generatedAudio, setGeneratedAudio] = useState<string | null>(null);
+  const [audioData, setAudioData] = useState<Float32Array | null>(null);
+  const [sampleRate, setSampleRate] = useState<number>(24000);
+  const [initProgress, setInitProgress] = useState(0);
+  const [showContextParamsModal, setShowContextParamsModal] = useState(false);
   const [showCompletionParamsModal, setShowCompletionParamsModal] =
-    useState(false)
-  const [showTTSParamsModal, setShowTTSParamsModal] = useState(false)
-  const [contextParams, setContextParams] = useState<ContextParams | null>(null)
+    useState(false);
+  const [showTTSParamsModal, setShowTTSParamsModal] = useState(false);
+  const [contextParams, setContextParams] = useState<ContextParams | null>(null);
   const [completionParams, setCompletionParams] =
-    useState<CompletionParams | null>(null)
-  const [ttsParams, setTtsParams] = useState<TTSParams | null>(null)
+    useState<CompletionParams | null>(null);
+  const [ttsParams, setTtsParams] = useState<TTSParams | null>(null);
 
   const handleSaveContextParams = (params: ContextParams) => {
-    setContextParams(params)
-  }
+    setContextParams(params);
+  };
 
   const handleSaveCompletionParams = (params: CompletionParams) => {
-    setCompletionParams(params)
-  }
+    setCompletionParams(params);
+  };
 
   const handleSaveTTSParams = (params: TTSParams) => {
-    setTtsParams(params)
-  }
+    setTtsParams(params);
+  };
 
   const saveAudioAsWav = async () => {
     if (!audioData || audioData.length === 0) {
-      Alert.alert('No Audio', 'No audio data available to save.')
-      return
+      Alert.alert('No Audio', 'No audio data available to save.');
+      return;
     }
 
     try {
-      console.log('Starting WAV file creation...')
+      console.log('Starting WAV file creation...');
 
       // Create WAV file from audio data
-      const wavBuffer = createWavFile(audioData, sampleRate || 24000, 16)
-      console.log('WAV buffer created, size:', wavBuffer.byteLength)
+      const wavBuffer = createWavFile(audioData, sampleRate || 24000, 16);
+      console.log('WAV buffer created, size:', wavBuffer.byteLength);
 
       // Convert to base64 for proper binary file handling
-      const uint8Array = new Uint8Array(wavBuffer)
+      const uint8Array = new Uint8Array(wavBuffer);
       // Convert Uint8Array to string for base64 encoding
       const binaryString = String.fromCharCode.apply(
         null,
         Array.from(uint8Array),
-      )
-      const base64Data = ReactNativeBlobUtil.base64.encode(binaryString)
-      console.log('Base64 data length:', base64Data.length)
+      );
+      const base64Data = ReactNativeBlobUtil.base64.encode(binaryString);
+      console.log('Base64 data length:', base64Data.length);
 
       // Generate filename with timestamp
-      const timestamp = new Date().toISOString().replace(/[.:]/g, '-')
-      const filename = `generated-speech-${timestamp}.wav`
+      const timestamp = new Date().toISOString().replace(/[.:]/g, '-');
+      const filename = `generated-speech-${timestamp}.wav`;
 
       // Create temporary file path in a more accessible location
-      const tempFilePath = `${ReactNativeBlobUtil.fs.dirs.CacheDir}/${filename}`
+      const tempFilePath = `${ReactNativeBlobUtil.fs.dirs.CacheDir}/${filename}`;
 
       // Write the WAV file as base64 binary data
-      await ReactNativeBlobUtil.fs.writeFile(tempFilePath, base64Data, 'base64')
+      await ReactNativeBlobUtil.fs.writeFile(tempFilePath, base64Data, 'base64');
 
       // Save using documents picker with proper file URI
       await saveDocuments({
@@ -206,23 +206,23 @@ export default function TTSScreen({ navigation }: { navigation: any }) {
         fileName: filename,
         mimeType: 'audio/wav',
         copy: false,
-      })
+      });
 
       // Clean up temp file
       try {
-        await ReactNativeBlobUtil.fs.unlink(tempFilePath)
+        await ReactNativeBlobUtil.fs.unlink(tempFilePath);
       } catch (cleanupError) {
-        console.warn('Failed to cleanup temp file:', cleanupError)
+        console.warn('Failed to cleanup temp file:', cleanupError);
       }
 
-      Alert.alert('Success', `Audio saved as ${filename}`)
+      Alert.alert('Success', `Audio saved as ${filename}`);
     } catch (error: any) {
-      console.error('Error saving audio:', error)
+      console.error('Error saving audio:', error);
 
       // Provide more detailed error information
       if (error.message?.includes('User cancelled')) {
         // User cancelled the save dialog, don't show error
-        return
+        return;
       }
 
       Alert.alert(
@@ -230,22 +230,22 @@ export default function TTSScreen({ navigation }: { navigation: any }) {
         `Failed to save audio: ${
           error.message || 'Unknown error'
         }\n\nPlease check the console for more details.`,
-      )
+      );
     }
-  }
+  };
 
   // Load TTS parameters on mount
   useLayoutEffect(() => {
     const loadTTSParamsAsync = async () => {
       try {
-        const params = await loadTTSParams()
-        setTtsParams(params)
+        const params = await loadTTSParams();
+        setTtsParams(params);
       } catch (error) {
-        console.error('Failed to load TTS params:', error)
+        console.error('Failed to load TTS params:', error);
       }
-    }
-    loadTTSParamsAsync()
-  }, [])
+    };
+    loadTTSParamsAsync();
+  }, []);
 
   // Set up navigation header button
   useLayoutEffect(() => {
@@ -263,7 +263,7 @@ export default function TTSScreen({ navigation }: { navigation: any }) {
             />
           </View>
         ),
-      })
+      });
     } else {
       navigation.setOptions({
         headerRight: () => (
@@ -272,16 +272,16 @@ export default function TTSScreen({ navigation }: { navigation: any }) {
             onPress={() => setShowContextParamsModal(true)}
           />
         ),
-      })
+      });
     }
-  }, [navigation, isModelReady])
+  }, [navigation, isModelReady]);
 
   const initializeModels = async (ttsPath: string, vocoderPath: string) => {
     try {
-      setIsLoading(true)
-      setInitProgress(0)
+      setIsLoading(true);
+      setInitProgress(0);
 
-      const params = contextParams || (await loadContextParams())
+      const params = contextParams || (await loadContextParams());
       // Initialize the TTS model
       const llamaContext = await initLlama(
         {
@@ -290,52 +290,52 @@ export default function TTSScreen({ navigation }: { navigation: any }) {
         },
         (progress) => {
           // Progress is reported as 1 to 100
-          setInitProgress(progress)
+          setInitProgress(progress);
         },
-      )
+      );
 
-      setContext(llamaContext)
-      setIsModelReady(true)
+      setContext(llamaContext);
+      setIsModelReady(true);
 
       // Initialize vocoder directly after TTS model
       try {
-        await llamaContext.initVocoder({ path: vocoderPath, n_batch: 4096 })
-        setIsVocoderReady(true)
+        await llamaContext.initVocoder({ path: vocoderPath, n_batch: 4096 });
+        setIsVocoderReady(true);
       } catch (vocoderError) {
-        console.log('Vocoder initialization error:', vocoderError)
+        console.log('Vocoder initialization error:', vocoderError);
         Alert.alert(
           'TTS Model Loaded',
           'OuteTTS model loaded successfully, but vocoder initialization failed. Audio tokens can be generated but not played.',
-        )
+        );
       }
     } catch (error: any) {
-      Alert.alert('Error', `Failed to initialize models: ${error.message}`)
+      Alert.alert('Error', `Failed to initialize models: ${error.message}`);
     } finally {
-      setIsLoading(false)
-      setInitProgress(0)
+      setIsLoading(false);
+      setInitProgress(0);
     }
-  }
+  };
 
   const generateSpeech = async () => {
-    if (!inputText.trim() || !context || isLoading) return
+    if (!inputText.trim() || !context || isLoading) {return;}
 
     try {
-      setIsLoading(true)
+      setIsLoading(true);
 
-      const text = inputText.trim()
+      const text = inputText.trim();
       // Get formatted prompt and guide tokens using OuteTTS format
       const { prompt: formattedPrompt, grammar } =
         await context.getFormattedAudioCompletion(
           ttsParams?.speakerConfig || null,
           text,
-        )
+        );
 
       const guideTokens: number[] = await context.getAudioCompletionGuideTokens(
         text,
-      )
+      );
 
-      const collectedTokens: number[] = []
-      const params = completionParams || (await loadCompletionParams())
+      const collectedTokens: number[] = [];
+      const params = completionParams || (await loadCompletionParams());
 
       const result = await context.completion(
         {
@@ -350,10 +350,10 @@ export default function TTSScreen({ navigation }: { navigation: any }) {
         (data) => {
           // Collect tokens for potential audio processing
           if (data.token && typeof data.token === 'number') {
-            collectedTokens.push(data.token)
+            collectedTokens.push(data.token);
           }
         },
-      )
+      );
 
       // Check if we got audio tokens
       if (result.audio_tokens && result.audio_tokens.length > 0) {
@@ -361,28 +361,28 @@ export default function TTSScreen({ navigation }: { navigation: any }) {
           `Generated ${
             result.audio_tokens.length
           } audio tokens for: "${inputText.trim()}"`,
-        )
+        );
 
         // If vocoder is available, decode audio tokens
         if (isVocoderReady && context.decodeAudioTokens) {
           try {
             const decodedAudio = await context.decodeAudioTokens(
               result.audio_tokens,
-            )
-            console.log('Generated audio data length:', decodedAudio.length)
+            );
+            console.log('Generated audio data length:', decodedAudio.length);
 
             // Convert ArrayBuffer to Float32Array for AudioPlayer
-            const audioFloat32 = new Float32Array(decodedAudio)
-            setAudioData(audioFloat32)
-            setSampleRate(24000) // OuteTTS default sample rate
+            const audioFloat32 = new Float32Array(decodedAudio);
+            setAudioData(audioFloat32);
+            setSampleRate(24000); // OuteTTS default sample rate
 
             setGeneratedAudio(
               `Generated audio data (${
                 audioFloat32.length
               } samples) for: "${inputText.trim()}"`,
-            )
+            );
           } catch (decodeError) {
-            console.log('Audio decoding error:', decodeError)
+            console.log('Audio decoding error:', decodeError);
           }
         }
 
@@ -393,22 +393,22 @@ export default function TTSScreen({ navigation }: { navigation: any }) {
               ? 'Audio data is ready for playback.'
               : 'Note: Audio playback requires vocoder setup.'
           }`,
-        )
+        );
       } else {
         setGeneratedAudio(
           `Text processed: "${inputText.trim()}" (No audio tokens generated)`,
-        )
+        );
         Alert.alert(
           'Processing Complete',
           'Text was processed but no audio tokens were generated. This may require proper OuteTTS model configuration.',
-        )
+        );
       }
     } catch (error: any) {
-      Alert.alert('Error', `Failed to generate speech: ${error.message}`)
+      Alert.alert('Error', `Failed to generate speech: ${error.message}`);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   if (!isModelReady) {
     return (
@@ -456,7 +456,7 @@ export default function TTSScreen({ navigation }: { navigation: any }) {
           showProgressBar={!context && initProgress > 0}
         />
       </View>
-    )
+    );
   }
 
   return (
@@ -571,5 +571,5 @@ export default function TTSScreen({ navigation }: { navigation: any }) {
         onSave={handleSaveTTSParams}
       />
     </View>
-  )
+  );
 }

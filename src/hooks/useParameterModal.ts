@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react'
-import { Alert } from 'react-native'
+import { useCallback, useState } from 'react';
+import { Alert } from 'react-native';
 
 interface UseParameterModalOptions<T> {
   loadParams: () => Promise<T>
@@ -15,33 +15,33 @@ export function useParameterModal<T>({
   resetParams,
   defaultParams,
 }: UseParameterModalOptions<T>) {
-  const [params, setParams] = useState<T>(defaultParams)
-  const [isLoading, setIsLoading] = useState(false)
+  const [params, setParams] = useState<T>(defaultParams);
+  const [isLoading, setIsLoading] = useState(false);
 
   const loadParamsAsync = useCallback(async () => {
     try {
-      const savedParams = await loadParams()
-      setParams(savedParams)
+      const savedParams = await loadParams();
+      setParams(savedParams);
     } catch (error) {
-      console.error('Error loading params:', error)
+      console.error('Error loading params:', error);
     }
-  }, [loadParams])
+  }, [loadParams]);
 
   const handleSave = async (
     onSave?: (params: T) => void,
     onClose?: () => void,
   ) => {
     try {
-      setIsLoading(true)
-      await saveParams(params)
-      onSave?.(params)
-      onClose?.()
+      setIsLoading(true);
+      await saveParams(params);
+      onSave?.(params);
+      onClose?.();
     } catch (error: any) {
-      Alert.alert('Error', `Failed to save parameters: ${error.message}`)
+      Alert.alert('Error', `Failed to save parameters: ${error.message}`);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleReset = async () => {
     Alert.alert(
@@ -54,21 +54,21 @@ export function useParameterModal<T>({
           style: 'destructive',
           onPress: async () => {
             try {
-              await resetParams()
-              setParams(defaultParams)
-              Alert.alert('Success', 'Parameters reset to defaults!')
+              await resetParams();
+              setParams(defaultParams);
+              Alert.alert('Success', 'Parameters reset to defaults!');
             } catch (error: any) {
-              Alert.alert('Error', `Failed to reset: ${error.message}`)
+              Alert.alert('Error', `Failed to reset: ${error.message}`);
             }
           },
         },
       ],
-    )
-  }
+    );
+  };
 
   const updateParam = (key: keyof T, value: any) => {
-    setParams((prev) => ({ ...prev, [key]: value }))
-  }
+    setParams((prev) => ({ ...prev, [key]: value }));
+  };
 
   return {
     params,
@@ -78,5 +78,5 @@ export function useParameterModal<T>({
     handleSave,
     handleReset,
     updateParam,
-  }
+  };
 }

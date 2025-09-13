@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState } from 'react';
 import {
   Modal,
   View,
@@ -7,16 +7,16 @@ import {
   StyleSheet,
   Alert,
   Platform,
-} from 'react-native'
+} from 'react-native';
 import {
   pick,
   saveDocuments,
   keepLocalCopy,
-} from '@react-native-documents/picker'
-import ReactNativeBlobUtil from 'react-native-blob-util'
-import type { LlamaContext } from 'llama.rn'
-import { createThemedStyles } from '../styles/commonStyles'
-import { useTheme } from '../contexts/ThemeContext'
+} from '@react-native-documents/picker';
+import ReactNativeBlobUtil from 'react-native-blob-util';
+import type { LlamaContext } from 'llama.rn';
+import { createThemedStyles } from '../styles/commonStyles';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface SessionModalProps {
   visible: boolean
@@ -29,9 +29,9 @@ export default function SessionModal({
   onClose,
   context,
 }: SessionModalProps) {
-  const { theme } = useTheme()
-  const themedStyles = createThemedStyles(theme.colors)
-  const [isLoading, setIsLoading] = useState(false)
+  const { theme } = useTheme();
+  const themedStyles = createThemedStyles(theme.colors);
+  const [isLoading, setIsLoading] = useState(false);
 
   const styles = StyleSheet.create({
     container: themedStyles.container,
@@ -102,68 +102,68 @@ export default function SessionModal({
     disabledButton: {
       backgroundColor: theme.colors.border,
     },
-  })
+  });
 
   const handleSaveSession = async () => {
     if (!context) {
-      Alert.alert('Error', 'No active context to save session from')
-      return
+      Alert.alert('Error', 'No active context to save session from');
+      return;
     }
 
     try {
-      setIsLoading(true)
+      setIsLoading(true);
 
       // Generate a default filename with timestamp
-      const timestamp = new Date().toISOString().replace(/[.:]/g, '-')
-      const defaultFilename = `llama-session-${timestamp}.bin`
+      const timestamp = new Date().toISOString().replace(/[.:]/g, '-');
+      const defaultFilename = `llama-session-${timestamp}.bin`;
 
       // Create a temporary file path
-      const tempDir = ReactNativeBlobUtil.fs.dirs.CacheDir
-      const tempFilePath = `${tempDir}/${defaultFilename}`
+      const tempDir = ReactNativeBlobUtil.fs.dirs.CacheDir;
+      const tempFilePath = `${tempDir}/${defaultFilename}`;
 
       // Save the session to temporary file first
-      const tokensCount = await context.saveSession(tempFilePath)
+      const tokensCount = await context.saveSession(tempFilePath);
 
       // Now use saveDocuments to let user choose where to save it
       const result = await saveDocuments({
         sourceUris: [`file://${tempFilePath}`],
         fileName: defaultFilename,
         mimeType: 'application/octet-stream',
-      })
+      });
 
       if (result && result.length > 0) {
         // Clean up temporary file
         await ReactNativeBlobUtil.fs.unlink(tempFilePath).catch(() => {
           // Ignore cleanup errors
-        })
+        });
 
         Alert.alert(
           'Success',
           `Session saved successfully!\nTokens saved: ${tokensCount}`,
-        )
+        );
       }
     } catch (error: any) {
       if (!error.message.includes('user canceled the document picker')) {
-        Alert.alert('Error', `Failed to save session: ${error.message}`)
+        Alert.alert('Error', `Failed to save session: ${error.message}`);
       }
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleLoadSession = async () => {
     if (!context) {
-      Alert.alert('Error', 'No active context to load session into')
-      return
+      Alert.alert('Error', 'No active context to load session into');
+      return;
     }
 
     try {
-      setIsLoading(true)
+      setIsLoading(true);
 
       const [file] = await pick({
         type: ['application/octet-stream', '*/*'],
         allowMultiSelection: false,
-      })
+      });
 
       if (file?.uri) {
         // Keep a local copy of the file
@@ -175,36 +175,36 @@ export default function SessionModal({
             },
           ],
           destination: 'documentDirectory',
-        })
+        });
 
         if (localCopy.status === 'success') {
           // Clean the file path
-          const filePath = localCopy.localUri.replace(/^file:\/\//, '')
+          const filePath = localCopy.localUri.replace(/^file:\/\//, '');
 
           // Load the session
-          const sessionResult = await context.loadSession(filePath)
+          const sessionResult = await context.loadSession(filePath);
 
           Alert.alert(
             'Success',
             `Session loaded successfully!\nTokens loaded: ${sessionResult.tokens_loaded}`,
-          )
+          );
 
-          onClose()
+          onClose();
         } else {
           Alert.alert(
             'Error',
             `Failed to copy session file: ${localCopy.copyError}`,
-          )
+          );
         }
       }
     } catch (error: any) {
       if (!error.message.includes('user canceled the document picker')) {
-        Alert.alert('Error', `Failed to load session: ${error.message}`)
+        Alert.alert('Error', `Failed to load session: ${error.message}`);
       }
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <Modal
@@ -261,5 +261,5 @@ export default function SessionModal({
         </View>
       </View>
     </Modal>
-  )
+  );
 }

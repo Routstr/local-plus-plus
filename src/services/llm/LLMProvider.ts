@@ -1,5 +1,5 @@
-import type { LlamaContext } from 'llama.rn'
-import type { LLMMessage } from '../../utils/llmMessages'
+import type { LlamaContext } from 'llama.rn';
+import type { LLMMessage } from '../../utils/llmMessages';
 
 export type LLMProviderKind = 'local' | 'routstr'
 

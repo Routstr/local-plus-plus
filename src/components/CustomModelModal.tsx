@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,15 +10,15 @@ import {
   ScrollView,
   Modal,
   Platform,
-} from 'react-native'
-import { pick, keepLocalCopy } from '@react-native-documents/picker'
+} from 'react-native';
+import { pick, keepLocalCopy } from '@react-native-documents/picker';
 import {
   HuggingFaceAPI,
   type CustomModelInfo,
-} from '../services/HuggingFaceAPI'
-import { saveCustomModel, type CustomModel } from '../utils/storage'
-import { createThemedStyles } from '../styles/commonStyles'
-import { useTheme } from '../contexts/ThemeContext'
+} from '../services/HuggingFaceAPI';
+import { saveCustomModel, type CustomModel } from '../utils/storage';
+import { createThemedStyles } from '../styles/commonStyles';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface CustomModelModalProps {
   visible: boolean
@@ -37,8 +37,8 @@ export default function CustomModelModal({
   title = 'Add Custom Model',
   enableFileSelection = false,
 }: CustomModelModalProps) {
-  const { theme } = useTheme()
-  const themedStyles = createThemedStyles(theme.colors)
+  const { theme } = useTheme();
+  const themedStyles = createThemedStyles(theme.colors);
 
   const styles = StyleSheet.create({
     container: {
@@ -268,112 +268,112 @@ export default function CustomModelModal({
       fontWeight: '700',
       color: theme.dark ? '#E2E8F0' : '#0E7490',
     },
-  })
+  });
 
-  const [modelId, setModelId] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [modelInfo, setModelInfo] = useState<CustomModelInfo | null>(null)
+  const [modelId, setModelId] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [modelInfo, setModelInfo] = useState<CustomModelInfo | null>(null);
   const [selectedFile, setSelectedFile] = useState<{
     filename: string
     quantization: string
-  } | null>(null)
+  } | null>(null);
   const [selectedMMProjFile, setSelectedMMProjFile] = useState<{
     filename: string
     quantization: string
-  } | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  } | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [selectedModelFile, setSelectedModelFile] = useState<{
     uri: string
     name: string
     size?: number | null
-  } | null>(null)
+  } | null>(null);
   const [selectedMmprojFile, setSelectedMmprojFile] = useState<{
     uri: string
     name: string
     size?: number | null
-  } | null>(null)
-  const [useFileSelection, setUseFileSelection] = useState(false)
+  } | null>(null);
+  const [useFileSelection, setUseFileSelection] = useState(false);
 
   useEffect(() => {
     if (!visible) {
       // Reset state when modal closes
-      setModelId('')
-      setIsLoading(false)
-      setModelInfo(null)
-      setSelectedFile(null)
-      setSelectedMMProjFile(null)
-      setSelectedModelFile(null)
-      setSelectedMmprojFile(null)
-      setUseFileSelection(false)
-      setError(null)
+      setModelId('');
+      setIsLoading(false);
+      setModelInfo(null);
+      setSelectedFile(null);
+      setSelectedMMProjFile(null);
+      setSelectedModelFile(null);
+      setSelectedMmprojFile(null);
+      setUseFileSelection(false);
+      setError(null);
     }
-  }, [visible])
+  }, [visible]);
 
   const handleFetchModel = async () => {
     if (!modelId.trim()) {
-      setError('Please enter a model ID')
-      return
+      setError('Please enter a model ID');
+      return;
     }
 
-    setIsLoading(true)
-    setError(null)
-    setModelInfo(null)
-    setSelectedFile(null)
-    setSelectedMMProjFile(null)
+    setIsLoading(true);
+    setError(null);
+    setModelInfo(null);
+    setSelectedFile(null);
+    setSelectedMMProjFile(null);
 
     try {
-      const info = await HuggingFaceAPI.fetchModelInfo(modelId.trim())
-      setModelInfo(info)
+      const info = await HuggingFaceAPI.fetchModelInfo(modelId.trim());
+      setModelInfo(info);
 
       if (!info.exists) {
-        setError(info.error || 'Model not found')
-        return
+        setError(info.error || 'Model not found');
+        return;
       }
 
       if (info.files.length === 0) {
-        setError('No GGUF files found in this model')
-        return
+        setError('No GGUF files found in this model');
+        return;
       }
 
       // Auto-select default quantization
-      const defaultFile = HuggingFaceAPI.getDefaultQuantization(info.files)
+      const defaultFile = HuggingFaceAPI.getDefaultQuantization(info.files);
       if (defaultFile) {
-        setSelectedFile(defaultFile)
+        setSelectedFile(defaultFile);
       }
 
       // Auto-select default mmproj if available
       if (info.mmprojFiles.length > 0) {
-        const defaultMMProj = HuggingFaceAPI.getDefaultMmproj(info.mmprojFiles)
+        const defaultMMProj = HuggingFaceAPI.getDefaultMmproj(info.mmprojFiles);
         if (defaultMMProj) {
-          setSelectedMMProjFile(defaultMMProj)
+          setSelectedMMProjFile(defaultMMProj);
         }
       } else if (requireMMProj) {
         setError(
           'This model does not have mmproj files required for multimodal functionality',
-        )
+        );
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error occurred')
+      setError(err instanceof Error ? err.message : 'Unknown error occurred');
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handlePickModelFile = async () => {
     try {
       const supportedTypes = Platform.OS === 'ios'
         ? ['public.data'] // iOS: Allow all file types
-        : ['*/*'] // Android: Allow all file types
+        : ['*/*']; // Android: Allow all file types
 
       const [file] = await pick({
         type: supportedTypes,
-      })
+      });
 
       if (file?.uri && file?.name) {
         // Check if it's a GGUF file
         if (!file.name.toLowerCase().endsWith('.gguf')) {
-          Alert.alert('Invalid File', 'Please select a GGUF model file (.gguf extension)')
-          return
+          Alert.alert('Invalid File', 'Please select a GGUF model file (.gguf extension)');
+          return;
         }
 
         // Keep a local copy of the file
@@ -385,42 +385,42 @@ export default function CustomModelModal({
             },
           ],
           destination: 'documentDirectory',
-        })
+        });
 
         if (localCopy.status === 'success') {
           setSelectedModelFile({
             uri: localCopy.localUri,
             name: file.name,
             size: file.size ?? null,
-          })
+          });
         } else {
-          setError(`Failed to copy model file: ${localCopy.copyError}`)
-          return
+          setError(`Failed to copy model file: ${localCopy.copyError}`);
+          return;
         }
-        setError(null)
+        setError(null);
       }
     } catch (err: any) {
       if (!err.message.includes('user canceled')) {
-        setError(`Failed to pick model file: ${err.message}`)
+        setError(`Failed to pick model file: ${err.message}`);
       }
     }
-  }
+  };
 
   const handlePickMmprojFile = async () => {
     try {
       const supportedTypes = Platform.OS === 'ios'
         ? ['public.data'] // iOS: Allow all file types
-        : ['*/*'] // Android: Allow all file types
+        : ['*/*']; // Android: Allow all file types
 
       const [file] = await pick({
         type: supportedTypes,
-      })
+      });
 
       if (file?.uri && file?.name) {
         // Check if it's a GGUF file
         if (!file.name.toLowerCase().endsWith('.gguf')) {
-          Alert.alert('Invalid File', 'Please select a GGUF mmproj file (.gguf extension)')
-          return
+          Alert.alert('Invalid File', 'Please select a GGUF mmproj file (.gguf extension)');
+          return;
         }
 
         // Keep a local copy of the file
@@ -432,38 +432,38 @@ export default function CustomModelModal({
             },
           ],
           destination: 'documentDirectory',
-        })
+        });
 
         if (localCopy.status === 'success') {
           setSelectedMmprojFile({
             uri: localCopy.localUri,
             name: file.name,
             size: file.size ?? null,
-          })
+          });
         } else {
-          setError(`Failed to copy mmproj file: ${localCopy.copyError}`)
-          return
+          setError(`Failed to copy mmproj file: ${localCopy.copyError}`);
+          return;
         }
-        setError(null)
+        setError(null);
       }
     } catch (err: any) {
       if (!err.message.includes('user canceled')) {
-        setError(`Failed to pick mmproj file: ${err.message}`)
+        setError(`Failed to pick mmproj file: ${err.message}`);
       }
     }
-  }
+  };
 
   const handleSave = async () => {
     if (useFileSelection) {
       // File selection mode
       if (!selectedModelFile) {
-        setError('Please select a model file')
-        return
+        setError('Please select a model file');
+        return;
       }
 
       if (requireMMProj && !selectedMmprojFile) {
-        setError('Please select an mmproj file for multimodal functionality')
-        return
+        setError('Please select an mmproj file for multimodal functionality');
+        return;
       }
 
       try {
@@ -477,29 +477,29 @@ export default function CustomModelModal({
           addedAt: Date.now(),
           localPath: selectedModelFile.uri,
           mmprojLocalPath: selectedMmprojFile?.uri,
-        }
+        };
 
-        await saveCustomModel(customModel)
-        Alert.alert('Success', 'Custom model added successfully!')
+        await saveCustomModel(customModel);
+        Alert.alert('Success', 'Custom model added successfully!');
 
         if (onModelAdded) {
-          onModelAdded(customModel)
+          onModelAdded(customModel);
         }
 
-        onClose()
+        onClose();
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to save model')
+        setError(err instanceof Error ? err.message : 'Failed to save model');
       }
     } else {
       // HuggingFace download mode
       if (!modelInfo || !selectedFile) {
-        setError('Please select a model file')
-        return
+        setError('Please select a model file');
+        return;
       }
 
       if (requireMMProj && !selectedMMProjFile) {
-        setError('Please select an mmproj file for multimodal functionality')
-        return
+        setError('Please select an mmproj file for multimodal functionality');
+        return;
       }
 
       try {
@@ -511,25 +511,25 @@ export default function CustomModelModal({
           mmprojFilename: selectedMMProjFile?.filename,
           mmprojQuantization: selectedMMProjFile?.quantization,
           addedAt: Date.now(),
-        }
+        };
 
-        await saveCustomModel(customModel)
-        Alert.alert('Success', 'Custom model added successfully!')
+        await saveCustomModel(customModel);
+        Alert.alert('Success', 'Custom model added successfully!');
 
         if (onModelAdded) {
-          onModelAdded(customModel)
+          onModelAdded(customModel);
         }
 
-        onClose()
+        onClose();
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to save model')
+        setError(err instanceof Error ? err.message : 'Failed to save model');
       }
     }
-  }
+  };
 
   const canSave = useFileSelection
     ? selectedModelFile && (!requireMMProj || selectedMmprojFile)
-    : modelInfo?.exists && selectedFile && (!requireMMProj || selectedMMProjFile)
+    : modelInfo?.exists && selectedFile && (!requireMMProj || selectedMMProjFile);
 
   return (
     <Modal
@@ -565,8 +565,8 @@ export default function CustomModelModal({
                     !useFileSelection && themedStyles.primaryButtonActive,
                   ]}
                   onPress={() => {
-                    setUseFileSelection(false)
-                    setError(null)
+                    setUseFileSelection(false);
+                    setError(null);
                   }}
                 >
                   <Text style={themedStyles.primaryButtonText}>
@@ -580,8 +580,8 @@ export default function CustomModelModal({
                     useFileSelection && themedStyles.primaryButtonActive,
                   ]}
                   onPress={() => {
-                    setUseFileSelection(true)
-                    setError(null)
+                    setUseFileSelection(true);
+                    setError(null);
                   }}
                 >
                   <Text style={themedStyles.primaryButtonText}>
@@ -785,5 +785,5 @@ export default function CustomModelModal({
         </ScrollView>
       </View>
     </Modal>
-  )
+  );
 }
