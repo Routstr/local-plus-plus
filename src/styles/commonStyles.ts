@@ -1,6 +1,6 @@
-import { StyleSheet } from 'react-native'
-import { defaultTheme as defaultLightTheme, darkTheme as defaultDarkTheme } from  '@flyerhq/react-native-chat-ui'
-import type { ThemeColors } from '../contexts/ThemeContext'
+import { StyleSheet } from 'react-native';
+import { defaultTheme as defaultLightTheme, darkTheme as defaultDarkTheme } from  '@flyerhq/react-native-chat-ui';
+import type { ThemeColors } from '../contexts/ThemeContext';
 
 export const chatLightTheme = {
   ...defaultLightTheme,
@@ -8,7 +8,7 @@ export const chatLightTheme = {
     ...defaultLightTheme.colors,
     background: '#f0f0f0', // light grey
   },
-}
+};
 
 export const chatDarkTheme = {
   ...defaultDarkTheme,
@@ -16,7 +16,7 @@ export const chatDarkTheme = {
     ...defaultDarkTheme.colors,
     background: '#1f1c383a', // purple dark
   },
-}
+};
 
 // Common spacing values
 export const Spacing = {
@@ -26,7 +26,7 @@ export const Spacing = {
   lg: 16,
   xl: 20,
   xxl: 24,
-} as const
+} as const;
 
 // Common font sizes
 export const FontSizes = {
@@ -35,11 +35,11 @@ export const FontSizes = {
   large: 16,
   xlarge: 18,
   xxlarge: 24,
-} as const
+} as const;
 
 // Function to create themed styles
 export const createThemedStyles = (colors: ThemeColors) => {
-  const isDark = colors.background === '#000000'
+  const isDark = colors.background === '#000000';
 
   return StyleSheet.create({
     // Container styles
@@ -248,6 +248,9 @@ export const createThemedStyles = (colors: ThemeColors) => {
       backgroundColor: colors.inputBackground,
       color: colors.text,
     },
+    singleLineInput: {
+      height: 44,
+    },
 
     // Modal styles
     modalContainer: {
@@ -355,5 +358,5 @@ export const createThemedStyles = (colors: ThemeColors) => {
     customModelDefaultSection: {
       marginTop: 8,
     },
-  })
-}
+  });
+};
