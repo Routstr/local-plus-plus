@@ -4,142 +4,194 @@ import React, {
   useLayoutEffect,
   useRef,
   useCallback,
-} from 'react'
+} from 'react';
 import {
   View,
   Text,
-  ScrollView,
   Alert,
   TouchableOpacity,
-  Animated,
-  Dimensions,
   Modal,
   TextInput,
-} from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Chat } from '@flyerhq/react-native-chat-ui'
-import type { MessageType } from '@flyerhq/react-native-chat-ui'
-import ModelDownloadCard from '../components/ModelDownloadCard'
-// import ContextParamsModal from '../components/ContextParamsModal'
-// import CompletionParamsModal from '../components/CompletionParamsModal'
-// import CustomModelModal from '../components/CustomModelModal'
-// import CustomModelCard from '../components/CustomModelCard'
-import { Bubble } from '../components/Bubble'
-import { MaskedProgress } from '../components/MaskedProgress'
-import { HeaderButton } from '../components/HeaderButton'
-// import { Menu } from '../components/Menu'
-// import { MessagesModal } from '../components/MessagesModal'
-// import SessionModal from '../components/SessionModal'
-import { StopButton } from '../components/StopButton'
-import { createThemedStyles, chatDarkTheme, chatLightTheme } from '../styles/commonStyles'
-import { useTheme } from '../contexts/ThemeContext'
-import { MODELS } from '../utils/constants'
-import type {
-  ContextParams,
-  CompletionParams,
-  // CustomModel,
-} from '../utils/storage'
-import {
-  loadContextParams,
-  loadCompletionParams,
-  // loadCustomModels,
-} from '../utils/storage'
-import type { LLMMessage } from '../utils/llmMessages'
-import type { LLMProvider } from '../services/llm/LLMProvider'
-import { LocalLLMProvider } from '../services/llm/LocalLLMProvider'
-import { RoutstrProvider } from '../services/llm/RoutstrProvider'
-import { loadRoutstrToken, saveRoutstrToken } from '../utils/storage'
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Chat } from '@flyerhq/react-native-chat-ui';
+import { useFocusEffect } from '@react-navigation/native';
+import type { MessageType } from '@flyerhq/react-native-chat-ui';
+import ModelDropdown from '../components/ModelDropdown';
+import type { UnifiedModelItemProps } from '../components/UnifiedModelItem';
+import { Bubble } from '../components/Bubble';
+import { MaskedProgress } from '../components/MaskedProgress';
+import { HeaderButton } from '../components/HeaderButton';
+import { StopButton } from '../components/StopButton';
+import { ModelDownloader } from '../services/ModelDownloader';
+import { createThemedStyles, chatDarkTheme, chatLightTheme } from '../styles/commonStyles';
+import { useTheme } from '../contexts/ThemeContext';
+import { MODELS } from '../utils/constants';
+import type { ContextParams } from '../utils/storage';
+import { loadContextParams, loadRoutstrFavorites, loadRoutstrModelsCache } from '../utils/storage';
+import type { LLMMessage } from '../utils/llmMessages';
+import type { LLMProvider } from '../services/llm/LLMProvider';
+import { LocalLLMProvider } from '../services/llm/LocalLLMProvider';
+import { RoutstrProvider } from '../services/llm/RoutstrProvider';
+import { loadRoutstrToken, saveRoutstrToken } from '../utils/storage';
+import { loadRoutstrBaseUrl } from '../utils/storage';
+import { fetchRoutstrWalletInfo } from '../services/RoutstrWalletService';
 
 type Provider = 'local' | 'routstr'
 
-// (moved into component state)
 const ROUTSTR_MODELS = [
   { label: 'Qwen3 Max', id: 'qwen/qwen3-max' },
   { label: 'GPT-5', id: 'openai/gpt-5' },
   { label: 'Claude 4 Sonnet', id: 'anthropic/claude-4-sonnet' },
-]
+];
 
-const user = { id: 'user' }
-const assistant = { id: 'assistant' }
+const user = { id: 'user' };
+const assistant = { id: 'assistant' };
 
-const randId = () => Math.random().toString(36).substr(2, 9)
+const randId = () => Math.random().toString(36).substr(2, 9);
 
 const DEFAULT_SYSTEM_PROMPT =
-  'You are a helpful, harmless, and honest AI assistant. Be concise and helpful in your responses.'
+  'You are a helpful, harmless, and honest AI assistant. Be concise and helpful in your responses.';
 
-export default function SimpleChatScreen({ navigation }: { navigation: any }) {
-  const { isDark, theme } = useTheme()
-  const themedStyles = createThemedStyles(theme.colors)
+export default function SimpleChatScreen({ navigation, route }: { navigation: any, route: any }) {
+  const { isDark, theme } = useTheme();
+  const themedStyles = createThemedStyles(theme.colors);
 
-  const messagesRef = useRef<MessageType.Any[]>([])
-  const [, setMessagesVersion] = useState(0) // For UI updates
-  const [isInitLoading, setIsInitLoading] = useState(false)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [llm, setLlm] = useState<LLMProvider | null>(null)
-  const [isModelReady, setIsModelReady] = useState(false)
-  const [initProgress, setInitProgress] = useState(0)
-  const [selectedModelName, setSelectedModelName] = useState<string>('Select a model')
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-  const [provider, setProvider] = useState<Provider>('local')
-  const windowWidth = Dimensions.get('window').width
-  const drawerWidth = Math.min(360, Math.round(windowWidth * 0.85))
-  const drawerAnim = useRef(new Animated.Value(0)).current
-  // const [showContextParamsModal, setShowContextParamsModal] = useState(false)
-  // const [showCompletionParamsModal, setShowCompletionParamsModal] =
-  //   useState(false)
-  // const [showMessagesModal, setShowMessagesModal] = useState(false)
-  // const [showSessionModal, setShowSessionModal] = useState(false)
-  // const [showCustomModelModal, setShowCustomModelModal] = useState(false)
-  const [contextParams, setContextParams] = useState<ContextParams | null>(null)
-  const [completionParams, setCompletionParams] =
-    useState<CompletionParams | null>(null)
-  const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT)
-  // const [customModels, setCustomModels] = useState<CustomModel[]>([])
-  const insets = useSafeAreaInsets()
-  const [routstrToken, setRoutstrToken] = useState<string | null>(null)
-  const [showTokenModal, setShowTokenModal] = useState(false)
-  const [tokenInput, setTokenInput] = useState('')
+  const messagesRef = useRef<MessageType.Any[]>([]);
+  const [, setMessagesVersion] = useState(0); // For UI updates
+  const [isInitLoading, setIsInitLoading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [llm, setLlm] = useState<LLMProvider | null>(null);
+  const [isModelReady, setIsModelReady] = useState(false);
+  const [initProgress, setInitProgress] = useState(0);
+  const [selectedModelName, setSelectedModelName] = useState<string>('Select a model');
+  const [selectedModelId, setSelectedModelId] = useState<string | undefined>();
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const [provider, setProvider] = useState<Provider>('local');
+  const [contextParams, setContextParams] = useState<ContextParams | null>(null);
+  const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT);
+  const insets = useSafeAreaInsets();
+  const [routstrToken, setRoutstrToken] = useState<string | null>(null);
+  const [showTokenModal, setShowTokenModal] = useState(false);
+  const [tokenInput, setTokenInput] = useState('');
+  const [downloadedLocalModels, setDownloadedLocalModels] = useState<UnifiedModelItemProps[]>([]);
+  const [routstrFavoriteIds, setRoutstrFavoriteIds] = useState<string[]>([]);
+  const [routstrCachedModels, setRoutstrCachedModels] = useState<{ id: string; name: string; completionSatPerToken?: number }[]>([]);
+  const [balanceMsats, setBalanceMsats] = useState<number | null>(null);
+  const [displayedBalanceMsats, setDisplayedBalanceMsats] = useState<number | null>(null);
+  const balanceAnimFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     const loadToken = async () => {
-      const token = await loadRoutstrToken()
-      setRoutstrToken(token)
+      const token = await loadRoutstrToken();
+      setRoutstrToken(token);
+    };
+    loadToken();
+  }, []);
+
+
+
+  useEffect(() => () => { void llm?.release(); }, [llm]);
+
+  const animateBalance = useCallback((from: number, to: number) => {
+    if (balanceAnimFrameRef.current) {cancelAnimationFrame(balanceAnimFrameRef.current);}
+    const start = Date.now();
+    const duration = 600;
+    const step = () => {
+      const t = Math.min(1, (Date.now() - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const current = Math.round(from + (to - from) * eased);
+      setDisplayedBalanceMsats(current);
+      if (t < 1) {balanceAnimFrameRef.current = requestAnimationFrame(step);}
+    };
+    balanceAnimFrameRef.current = requestAnimationFrame(step);
+  }, []);
+
+  useEffect(() => () => { if (balanceAnimFrameRef.current) {cancelAnimationFrame(balanceAnimFrameRef.current);} }, []);
+
+  const refreshBalance = useCallback(async (animate: boolean = true, explicitToken?: string) => {
+    try {
+      const info = await fetchRoutstrWalletInfo(explicitToken);
+      const next = Math.max(0, Math.round(Number(info.balance) || 0));
+      setBalanceMsats(next);
+      if (displayedBalanceMsats == null) {
+        setDisplayedBalanceMsats(next);
+      } else if (animate) {
+        animateBalance(displayedBalanceMsats, next);
+      } else {
+        setDisplayedBalanceMsats(next);
+      }
+    } catch {
+      // ignore balance fetch errors
     }
-    loadToken()
-  }, [])
+  }, [animateBalance, displayedBalanceMsats]);
 
-  useEffect(() => () => { void llm?.release() }, [llm])
+  // Reload Routstr token and base URL on focus and reinitialize provider if needed
+  useFocusEffect(
+    React.useCallback(() => {
+      let cancelled = false;
+      const syncToken = async () => {
+        const next = await loadRoutstrToken();
+        await loadRoutstrBaseUrl();
+        if (cancelled) { return; }
+        setRoutstrToken(next);
+        if (next) { void refreshBalance(false, next); }
+        if (next && provider === 'routstr' && llm?.kind === 'routstr' && selectedModelId) {
+          try {
+            await llm.initialize({ apiKey: next, model: selectedModelId });
+          } catch {
+            // ignore re-init errors
+          }
+        }
+      };
+      void syncToken();
+      return () => { cancelled = true; };
+    }, [provider, llm, selectedModelId, refreshBalance])
+  );
 
-  // // Load custom models on mount (disabled for minimal app)
-  // useEffect(() => {
-  //   const loadCustomModelsData = async () => {
-  //     try {
-  //       const models = await loadCustomModels()
-  //       setCustomModels(models)
-  //     } catch (error) {
-  //       console.error('Error loading custom models:', error)
-  //     }
-  //   }
-  //   loadCustomModelsData()
-  // }, [])
+  // Refresh favorites when screen gains focus
+  useFocusEffect(
+    React.useCallback(() => {
+      let cancelled = false;
+      const loadFavs = async () => {
+        const ids = await loadRoutstrFavorites();
+        if (!cancelled) {setRoutstrFavoriteIds(ids);}
+        const cached = await loadRoutstrModelsCache();
+        if (!cancelled) {setRoutstrCachedModels(cached.map((m) => ({ id: m.id, name: m.name, completionSatPerToken: m.completionSatPerToken })));}
+      };
+      loadFavs();
+      return () => { cancelled = true; };
+    }, []),
+  );
+
+  // Track downloaded local models for dropdown filtering
+  useEffect(() => {
+    let cancelled = false;
+    const checkDownloads = async () => {
+      const keys: (keyof typeof MODELS)[] = ['SMOL_LM_3', 'GEMMA_3_4B_QAT', 'QWEN_3_4B'];
+      const entries = await Promise.all(keys.map(async (k) => {
+        const info = MODELS[k];
+        const isDownloaded = await ModelDownloader.isModelDownloaded(info.filename);
+        return isDownloaded ? ({
+          id: k,
+          name: info.name,
+          type: 'local' as const,
+          repo: info.repo,
+          filename: info.filename,
+          size: info.size,
+          onSelect: () => {},
+        } as UnifiedModelItemProps) : null;
+      }));
+      if (!cancelled) {setDownloadedLocalModels(entries.filter((e): e is UnifiedModelItemProps => !!e));}
+    };
+    checkDownloads();
+    const interval = setInterval(checkDownloads, 2000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
 
   const handleSaveContextParams = (params: ContextParams) => {
-    setContextParams(params)
-  }
-
-  const handleSaveCompletionParams = (params: CompletionParams) => {
-    setCompletionParams(params)
-  }
-
-  // const handleCustomModelAdded = async (_model: CustomModel) => {
-  //   const models = await loadCustomModels()
-  //   setCustomModels(models)
-  // }
-
-  // const handleCustomModelRemoved = async () => {
-  //   const models = await loadCustomModels()
-  //   setCustomModels(models)
-  // }
+    setContextParams(params);
+  };
 
   const buildLLMMessages = (): LLMMessage[] => {
     const conversationMessages: LLMMessage[] = [
@@ -147,7 +199,7 @@ export default function SimpleChatScreen({ navigation }: { navigation: any }) {
         role: 'system',
         content: systemPrompt,
       },
-    ]
+    ];
 
     // Add previous messages from chat history
     const recentMessages = messagesRef.current
@@ -164,31 +216,31 @@ export default function SimpleChatScreen({ navigation }: { navigation: any }) {
             : ('assistant' as const),
         content: msg.text,
         reasoning_content: msg.metadata?.completionResult?.reasoning_content,
-      }))
+      }));
 
-    return [...conversationMessages, ...recentMessages]
-  }
+    return [...conversationMessages, ...recentMessages];
+  };
 
   const addMessage = useCallback((message: MessageType.Any) => {
-    messagesRef.current = [message, ...messagesRef.current]
-    setMessagesVersion((prev) => prev + 1)
-  }, [])
+    messagesRef.current = [message, ...messagesRef.current];
+    setMessagesVersion((prev) => prev + 1);
+  }, []);
 
   const updateMessage = (
     messageId: string,
     updateFn: (msg: MessageType.Any) => MessageType.Any,
   ) => {
-    const index = messagesRef.current.findIndex((msg) => msg.id === messageId)
+    const index = messagesRef.current.findIndex((msg) => msg.id === messageId);
     if (index >= 0) {
       messagesRef.current = messagesRef.current.map((msg, i) => {
         if (i === index) {
-          return updateFn(msg)
+          return updateFn(msg);
         }
-        return msg
-      })
-      setMessagesVersion((prev) => prev + 1)
+        return msg;
+      });
+      setMessagesVersion((prev) => prev + 1);
     }
-  }
+  };
 
   const addSystemMessage = useCallback(
     (text: string, metadata = {}) => {
@@ -199,12 +251,12 @@ export default function SimpleChatScreen({ navigation }: { navigation: any }) {
         text,
         type: 'text',
         metadata: { system: true, ...metadata },
-      }
-      addMessage(textMessage)
-      return textMessage.id
+      };
+      addMessage(textMessage);
+      return textMessage.id;
     },
     [addMessage],
-  )
+  );
 
   const handleReset = useCallback(() => {
     Alert.alert(
@@ -219,92 +271,178 @@ export default function SimpleChatScreen({ navigation }: { navigation: any }) {
           text: 'Reset',
           style: 'destructive',
           onPress: () => {
-            messagesRef.current = []
-            setMessagesVersion((prev) => prev + 1)
+            messagesRef.current = [];
+            setMessagesVersion((prev) => prev + 1);
             addSystemMessage(
               "Hello! I'm ready to chat with you. How can I help you today?",
-            )
+            );
           },
         },
       ],
-    )
-  }, [addSystemMessage])
+    );
+  }, [addSystemMessage]);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerLeft: () => (
-        <HeaderButton iconName="menu" onPress={() => openDrawer()} />
-      ),
-      title: isModelReady ? selectedModelName : 'Select a model',
-      headerRight: () => (
-        isModelReady ? <HeaderButton iconName="refresh" onPress={handleReset} /> : null
-      ),
-    })
-  }, [navigation, isModelReady, selectedModelName, handleReset])
-
-  // const handleImportMessages = (newMessages: MessageType.Any[]) => {
-  //   messagesRef.current = []
-  //   setMessagesVersion((prev) => prev + 1)
-  //   addSystemMessage(
-  //     "Hello! I'm ready to chat with you. How can I help you today?",
-  //   )
-  //   messagesRef.current = [...newMessages.reverse(), ...messagesRef.current]
-  //   setMessagesVersion((prev) => prev + 1)
-  // }
-
-  // const handleUpdateSystemPrompt = (newSystemPrompt: string) => {
-  //   setSystemPrompt(newSystemPrompt)
-  // }
-
-  const initializeModel = async (modelPath: string) => {
+  const initializeLocalModel = async (modelPath: string) => {
     try {
-      setIsInitLoading(true)
-      setInitProgress(0)
+      setIsInitLoading(true);
+      setInitProgress(0);
 
-      setProvider('local')
+      const params = contextParams || (await loadContextParams());
+      const provider = new LocalLLMProvider(modelPath.split('/').pop() || 'Local Model');
+      await provider.initialize({ model: modelPath, params, onProgress: (p) => setInitProgress(p) });
+      setLlm(provider);
+      setIsModelReady(true);
+      setInitProgress(100);
 
-      const params = contextParams || (await loadContextParams())
-      const provider = new LocalLLMProvider(modelPath.split('/').pop() || 'Local Model')
-      await provider.initialize({ model: modelPath, params, onProgress: (p) => setInitProgress(p) })
-      setLlm(provider)
-      setIsModelReady(true)
-      setInitProgress(100)
-
-      // Add welcome message only if no messages exist to avoid duplicates on switch
+      // Add welcome message only if no messages exist
       if (messagesRef.current.length === 0) {
         addSystemMessage(
           "Hello! I'm ready to chat with you. How can I help you today?",
-        )
+        );
       }
     } catch (error: any) {
-      Alert.alert('Error', `Failed to initialize model: ${error.message}`)
+      Alert.alert('Error', `Failed to initialize model: ${error.message}`);
     } finally {
-      setIsInitLoading(false)
-      setInitProgress(0)
+      setIsInitLoading(false);
+      setInitProgress(0);
     }
-  }
+  };
 
-  const openDrawer = () => {
-    setIsDrawerOpen(true)
-    Animated.timing(drawerAnim, {
-      toValue: 1,
-      duration: 220,
-      useNativeDriver: true,
-    }).start()
-  }
+  const initializeRoutstrModel = async (model: UnifiedModelItemProps) => {
+    if (!routstrToken) {
+      setTokenInput('');
+      setShowTokenModal(true);
+      return;
+    }
 
-  const closeDrawer = () => {
-    Animated.timing(drawerAnim, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(({ finished }) => {
-      if (finished) setIsDrawerOpen(false)
-    })
-  }
+    try {
+      const provider = new RoutstrProvider(model.name);
+      await provider.initialize({ apiKey: routstrToken, model: model.apiId || model.id });
+      setLlm(provider);
+      setSelectedModelName(model.name);
+      setSelectedModelId(model.id);
+      setProvider('routstr');
+      setIsModelReady(true);
+
+      if (messagesRef.current.length === 0) {
+        addSystemMessage("Hello! I'm ready to chat with you. How can I help you today?");
+      }
+      // Update balance when starting a Routstr session
+      void refreshBalance(false);
+    } catch (error: any) {
+      Alert.alert('Error', `Failed to initialize Routstr model: ${error.message}`);
+    }
+  };
+
+  const handleSelectModel = async (model: UnifiedModelItemProps) => {
+    await llm?.release();
+
+    if (model.type === 'routstr') {
+      await initializeRoutstrModel(model);
+    } else {
+      // Local model
+      setProvider('local');
+      setSelectedModelName(model.name);
+      setSelectedModelId(model.id);
+
+      // Check if model is downloaded
+      if (model.filename) {
+        const isDownloaded = await ModelDownloader.isModelDownloaded(model.filename);
+        if (isDownloaded) {
+          const modelPath = await ModelDownloader.getModelPath(model.filename);
+          if (modelPath) {
+            await initializeLocalModel(modelPath);
+          }
+        } else {
+          Alert.alert(
+            'Model Not Downloaded',
+            `Please download ${model.name} first from one of the other screens.`,
+            [{ text: 'OK' }]
+          );
+        }
+      }
+    }
+  };
+
+  // Build model groups for dropdown (only show downloaded local models)
+  const modelGroups = [
+    { title: 'Local Models', models: downloadedLocalModels },
+    {
+      title: 'Routstr Models',
+      models:
+        routstrFavoriteIds.length > 0
+          ? routstrFavoriteIds.map((id) => ({
+              id,
+              name: routstrCachedModels.find((m) => m.id === id)?.name || id,
+              type: 'routstr' as const,
+              apiId: id,
+              completionSatPerToken: routstrCachedModels.find((m) => m.id === id)?.completionSatPerToken,
+              onSelect: () => {},
+            } as UnifiedModelItemProps))
+          : (routstrCachedModels.length > 0
+              ? routstrCachedModels.map((m) => ({
+                  id: m.id,
+                  name: m.name,
+                  type: 'routstr' as const,
+                  apiId: m.id,
+                  completionSatPerToken: m.completionSatPerToken,
+                  onSelect: () => {},
+                } as UnifiedModelItemProps))
+              : ROUTSTR_MODELS.map((m) => ({
+                  id: m.id,
+                  name: m.label,
+                  type: 'routstr' as const,
+                  apiId: m.id,
+                  onSelect: () => {},
+                } as UnifiedModelItemProps))),
+    },
+  ];
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerTitleAlign: 'center',
+      headerTitle: () => (
+        <TouchableOpacity
+          onPressIn={() => setShowModelDropdown(true)}
+          onPress={() => navigation.setParams({ openModelDropdown: Date.now() })}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={{ flexDirection: 'row', alignItems: 'center' }}
+        >
+          <Text style={{ fontSize: 17, fontWeight: '600', color: theme.colors.text }}>
+            {selectedModelName}
+          </Text>
+          <Text style={{ marginLeft: 6, fontSize: 16, color: theme.colors.textSecondary }}>
+            ▼
+          </Text>
+        </TouchableOpacity>
+      ),
+      headerLeft: () => (
+        isModelReady ? <HeaderButton iconName="refresh" onPress={handleReset} /> : null
+      ),
+      headerRight: () => (
+        routstrToken && provider === 'routstr' ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ marginRight: 8, fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary }}>
+              {displayedBalanceMsats != null ? `${displayedBalanceMsats.toLocaleString()} msats` : '—'}
+            </Text>
+          </View>
+        ) : null
+      ),
+    });
+  }, [navigation, isModelReady, selectedModelName, theme, handleReset, routstrToken, displayedBalanceMsats, provider]);
+
+  // Respond to header request via route params
+  useEffect(() => {
+    const flag = route?.params?.openModelDropdown;
+    if (flag) {
+      setShowModelDropdown(true);
+      // Clear the flag so it can be triggered again
+      navigation.setParams({ openModelDropdown: undefined });
+    }
+  }, [route?.params?.openModelDropdown, navigation]);
 
   const handleSendPress = async (message: MessageType.PartialText) => {
-    if (isGenerating) return
+    if (isGenerating) {return;}
 
     const userMessage: MessageType.Text = {
       author: user,
@@ -312,49 +450,49 @@ export default function SimpleChatScreen({ navigation }: { navigation: any }) {
       id: randId(),
       text: message.text,
       type: 'text',
-    }
+    };
 
-    addMessage(userMessage)
-    setIsGenerating(true)
+    addMessage(userMessage);
+    setIsGenerating(true);
 
     try {
-      // Build conversation messages using the reusable function
-      const conversationMessages = buildLLMMessages()
+      const conversationMessages = buildLLMMessages();
 
-      const responseId = randId()
+      const responseId = randId();
       const responseMessage: MessageType.Text = {
         author: assistant,
         createdAt: Date.now(),
         id: responseId,
         text: '',
         type: 'text',
-      }
+      };
 
-      addMessage(responseMessage)
+      addMessage(responseMessage);
 
       if (llm) {
         const { content, metadata } = await llm.sendChat(conversationMessages, (delta) => {
           updateMessage(responseId, (msg) => {
             if (msg.type === 'text') {
-              return { ...msg, text: delta.replace(/^\s+/, '') }
+              return { ...msg, text: delta.replace(/^\s+/, '') };
             }
-            return msg
-          })
-        })
+            return msg;
+          });
+        });
         updateMessage(responseId, (msg) => ({
           ...msg,
           text: content,
           metadata: { ...msg.metadata, ...metadata },
-        }))
+        }));
       } else {
-        throw new Error('No LLM provider selected')
+        throw new Error('No LLM provider selected');
       }
     } catch (error: any) {
-      Alert.alert('Error', `Failed to generate response: ${error.message}`)
+      Alert.alert('Error', `Failed to generate response: ${error.message}`);
     } finally {
-      setIsGenerating(false)
+      setIsGenerating(false);
+      if (routstrToken) {void refreshBalance(true);}
     }
-  }
+  };
 
   const renderBubble = ({
     child,
@@ -362,7 +500,7 @@ export default function SimpleChatScreen({ navigation }: { navigation: any }) {
   }: {
     child: React.ReactNode
     message: MessageType.Any
-  }) => <Bubble child={child} message={message} />
+  }) => <Bubble child={child} message={message} />;
 
   return (
     <View style={themedStyles.container}>
@@ -377,7 +515,7 @@ export default function SimpleChatScreen({ navigation }: { navigation: any }) {
           editable: !isGenerating && isModelReady,
           placeholder: isGenerating
             ? 'AI is thinking...'
-            : isModelReady ? 'Type your message here' : 'Open menu to select a model',
+            : isModelReady ? 'Type your message here' : 'Select a model to start',
           keyboardType: 'ascii-capable',
         }}
       />
@@ -386,136 +524,15 @@ export default function SimpleChatScreen({ navigation }: { navigation: any }) {
         <StopButton context={llm.getContext()} insets={insets} isLoading={isGenerating} />
       )}
 
-      {/* Side Drawer Overlay */}
-      <Animated.View
-        pointerEvents={isDrawerOpen ? 'auto' : 'none'}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.4)',
-          opacity: drawerAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] }),
-        }}
-      >
-        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={closeDrawer} />
-      </Animated.View>
-
-      <Animated.View
-        style={{
-          position: 'absolute',
-          top: 0,
-          bottom: 0,
-          left: 0,
-          width: drawerWidth,
-          backgroundColor: theme.colors.surface,
-          borderRightWidth: 1,
-          borderRightColor: theme.colors.border,
-          transform: [{
-            translateX: drawerAnim.interpolate({ inputRange: [0, 1], outputRange: [-drawerWidth, 0] }),
-          }],
-          shadowColor: theme.colors.shadow,
-          shadowOffset: { width: 2, height: 0 },
-          shadowOpacity: 0.2,
-          shadowRadius: 6,
-          elevation: 6,
-        }}
-      >
-        <View style={{ paddingTop: insets.top + 8, paddingHorizontal: 12, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.text }}>Models</Text>
-          <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 4 }}>Select a model to use</Text>
-        </View>
-        <ScrollView contentContainerStyle={{ paddingVertical: 8 }}>
-          {/* <Text style={themedStyles.modelSectionTitle}>Default Models</Text> */}
-          {[
-            'SMOL_LM_3',
-            'GEMMA_3_4B_QAT',
-            'QWEN_3_4B',
-          ].map((model) => {
-            const modelInfo = MODELS[model as keyof typeof MODELS]
-            return (
-              <ModelDownloadCard
-                key={model}
-                title={modelInfo.name}
-                repo={modelInfo.repo}
-                filename={modelInfo.filename}
-                size={modelInfo.size}
-                initializeButtonText={isModelReady ? 'Switch to this model' : 'Initialize'}
-                hideInitializeButton={isModelReady && selectedModelName === modelInfo.name}
-                onInitialize={async (path) => {
-                  setSelectedModelName(modelInfo.name)
-                  await llm?.release()
-                  await initializeModel(path)
-                  closeDrawer()
-                }}
-              />
-            )
-          })}
-          <Text style={themedStyles.modelSectionTitle}>Routstr Models</Text>
-          {ROUTSTR_MODELS.map((m) => (
-            <View key={m.id} style={{ backgroundColor: theme.colors.surface, borderRadius: 12, marginHorizontal: 16, marginVertical: 8, padding: 16, borderWidth: 1, borderColor: theme.colors.border }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View>
-                  <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text }}>{m.label}</Text>
-                  <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginTop: 4 }}>Uses Routstr API (no download)</Text>
-                </View>
-                {selectedModelName === m.label ? (
-                  <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>(selected)</Text>
-                ) : (
-                  <TouchableOpacity
-                    style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 6 }}
-                    onPress={async () => {
-                      await llm?.release()
-                      if (!routstrToken) {
-                        setTokenInput('')
-                        setShowTokenModal(true)
-                        return
-                      }
-                      const provider = new RoutstrProvider(m.label)
-                      await provider.initialize({ apiKey: routstrToken, model: m.id })
-                      setLlm(provider)
-                      setSelectedModelName(m.label)
-                      setProvider('routstr')
-                      setIsModelReady(true)
-                      if (messagesRef.current.length === 0) {
-                        addSystemMessage("Hello! I'm ready to chat with you. How can I help you today?")
-                      }
-                      closeDrawer()
-                    }}
-                  >
-                    <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: '600' }}>Use</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-          ))}
-          <View style={{ height: 24 }} />
-        </ScrollView>
-      </Animated.View>
-
-      {/** Advanced modals are disabled for minimal app */}
-      {/**
-      <CompletionParamsModal
-        visible={showCompletionParamsModal}
-        onClose={() => setShowCompletionParamsModal(false)}
-        onSave={handleSaveCompletionParams}
+      <ModelDropdown
+        visible={showModelDropdown}
+        onClose={() => setShowModelDropdown(false)}
+        selectedModelId={selectedModelId}
+        onSelectModel={handleSelectModel}
+        modelGroups={modelGroups}
+        currentModelName={selectedModelName}
+        onOpenSettings={() => navigation.navigate('ModelManager')}
       />
-      <MessagesModal
-        visible={showMessagesModal}
-        onClose={() => setShowMessagesModal(false)}
-        messages={buildLLMMessages()}
-        context={context}
-        onImportMessages={handleImportMessages}
-        onUpdateSystemPrompt={handleUpdateSystemPrompt}
-        defaultSystemPrompt={DEFAULT_SYSTEM_PROMPT}
-      />
-      <SessionModal
-        visible={showSessionModal}
-        onClose={() => setShowSessionModal(false)}
-        context={context}
-      />
-      */}
 
       <MaskedProgress
         visible={isInitLoading}
@@ -535,9 +552,11 @@ export default function SimpleChatScreen({ navigation }: { navigation: any }) {
               onChangeText={setTokenInput}
               placeholder="cashu..."
               placeholderTextColor={theme.colors.textSecondary}
-              style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, color: theme.colors.text }}
+              style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, color: theme.colors.text, height: 44 }}
               autoCapitalize="none"
               autoCorrect={false}
+              numberOfLines={1}
+              multiline={false}
             />
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 }}>
               <TouchableOpacity onPress={() => setShowTokenModal(false)} style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
@@ -545,10 +564,19 @@ export default function SimpleChatScreen({ navigation }: { navigation: any }) {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={async () => {
-                  if (!tokenInput.trim()) return
-                  await saveRoutstrToken(tokenInput.trim())
-                  setRoutstrToken(tokenInput.trim())
-                  setShowTokenModal(false)
+                  if (!tokenInput.trim()) {return;}
+                  await saveRoutstrToken(tokenInput.trim());
+                  setRoutstrToken(tokenInput.trim());
+                  setShowTokenModal(false);
+                  // Fetch wallet balance immediately on token save
+                  await refreshBalance(false, tokenInput.trim());
+                  // Retry model initialization
+                  const selectedModel = modelGroups
+                    .flatMap((g) => g.models)
+                    .find((m) => m.id === selectedModelId);
+                  if (selectedModel && selectedModel.type === 'routstr') {
+                    await initializeRoutstrModel(selectedModel);
+                  }
                 }}
                 style={{ paddingHorizontal: 12, paddingVertical: 8 }}
               >
@@ -559,5 +587,5 @@ export default function SimpleChatScreen({ navigation }: { navigation: any }) {
         </View>
       </Modal>
     </View>
-  )
+  );
 }
