@@ -98,8 +98,8 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-apk
-          path: android/app/build/outputs/apk/release/*.apk
+          name: localplusplus-apk
+          path: android/app/build/outputs/apk/release/localplusplus.apk
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
@@ -108,5 +108,5 @@ jobs:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
           name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
           files: |
-            android/app/build/outputs/apk/release/*.apk
+            android/app/build/outputs/apk/release/localplusplus.apk
           generate_release_notes: true
