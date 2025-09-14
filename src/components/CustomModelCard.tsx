@@ -4,7 +4,6 @@ import Icon from '@react-native-vector-icons/material-design-icons';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import ModelDownloadCard, { MtmdModelDownloadCard } from './ModelDownloadCard';
 import { deleteCustomModel, type CustomModel } from '../utils/storage';
-import { ModelDownloader } from '../services/ModelDownloader';
 
 interface CustomModelCardProps {
   model: CustomModel
@@ -90,114 +89,24 @@ export default function CustomModelCard({
           return;
         }
 
-        // Check if model is downloaded first
-        const isDownloaded = await ModelDownloader.isModelDownloaded(
-          model.filename,
-        );
-
-        if (isDownloaded) {
-          // Calculate model size for downloaded files
-          const modelSizeFormatted =
-            await ModelDownloader.getModelSizeFormatted(model.filename);
-          if (modelSizeFormatted) {
-            setModelSize(modelSizeFormatted);
+        // For undownloaded models or downloaded ones, try to stat files under DocumentDir/models
+        try {
+          const base = ReactNativeBlobUtil.fs.dirs.DocumentDir + '/models';
+          const modelPath = `${base}/${model.filename}`;
+          if (await ReactNativeBlobUtil.fs.exists(modelPath)) {
+            const stat = await ReactNativeBlobUtil.fs.stat(modelPath);
+            const sizeInMB = (Number(stat.size) / (1024 * 1024)).toFixed(1);
+            setModelSize(`${sizeInMB} MB`);
           }
-
-          // Calculate mmproj size if exists
           if (model.mmprojFilename) {
-            const mmprojSizeFormatted =
-              await ModelDownloader.getModelSizeFormatted(model.mmprojFilename);
-            if (mmprojSizeFormatted) {
-              setMmprojSize(mmprojSizeFormatted);
+            const mmprojPath = `${base}/${model.mmprojFilename}`;
+            if (await ReactNativeBlobUtil.fs.exists(mmprojPath)) {
+              const mmstat = await ReactNativeBlobUtil.fs.stat(mmprojPath);
+              const sizeInMB = (Number(mmstat.size) / (1024 * 1024)).toFixed(1);
+              setMmprojSize(`${sizeInMB} MB`);
             }
           }
-        } else {
-          // For undownloaded models, try to get remote size first
-          try {
-            const remoteSizeFormatted =
-              await ModelDownloader.getModelSizeFromRemoteFormatted(
-                model.repo,
-                model.filename,
-              );
-            if (remoteSizeFormatted) {
-              const splitInfo = await ModelDownloader.getSplitFileInfo(
-                model.filename,
-              );
-              if (splitInfo) {
-                setModelSize(
-                  `${remoteSizeFormatted} (${splitInfo.totalParts} parts)`,
-                );
-              } else {
-                setModelSize(remoteSizeFormatted);
-              }
-            } else {
-              // Fallback to split info only
-              const splitInfo = await ModelDownloader.getSplitFileInfo(
-                model.filename,
-              );
-              if (splitInfo) {
-                setModelSize(`Split model (${splitInfo.totalParts} parts)`);
-              } else {
-                setModelSize('Size unknown');
-              }
-            }
-          } catch {
-            // If remote size fails, fallback to split info
-            const splitInfo = await ModelDownloader.getSplitFileInfo(
-              model.filename,
-            );
-            if (splitInfo) {
-              setModelSize(`Split model (${splitInfo.totalParts} parts)`);
-            } else {
-              setModelSize('Size unknown');
-            }
-          }
-
-          // Same for mmproj if exists
-          if (model.mmprojFilename) {
-            try {
-              const mmprojRemoteSizeFormatted =
-                await ModelDownloader.getModelSizeFromRemoteFormatted(
-                  model.repo,
-                  model.mmprojFilename,
-                );
-              if (mmprojRemoteSizeFormatted) {
-                const mmprojSplitInfo = await ModelDownloader.getSplitFileInfo(
-                  model.mmprojFilename,
-                );
-                if (mmprojSplitInfo) {
-                  setMmprojSize(
-                    `${mmprojRemoteSizeFormatted} (${mmprojSplitInfo.totalParts} parts)`,
-                  );
-                } else {
-                  setMmprojSize(mmprojRemoteSizeFormatted);
-                }
-              } else {
-                const mmprojSplitInfo = await ModelDownloader.getSplitFileInfo(
-                  model.mmprojFilename,
-                );
-                if (mmprojSplitInfo) {
-                  setMmprojSize(
-                    `Split file (${mmprojSplitInfo.totalParts} parts)`,
-                  );
-                } else {
-                  setMmprojSize('Size unknown');
-                }
-              }
-            } catch {
-              const mmprojSplitInfo = await ModelDownloader.getSplitFileInfo(
-                model.mmprojFilename,
-              );
-              if (mmprojSplitInfo) {
-                setMmprojSize(
-                  `Split file (${mmprojSplitInfo.totalParts} parts)`,
-                );
-              } else {
-                setMmprojSize('Size unknown');
-              }
-            }
-          }
-        }
+        } catch {}
       } catch (error) {
         console.warn('Failed to calculate model sizes:', error);
       }
@@ -343,10 +252,17 @@ export default function CustomModelCard({
                     }
                   }
                 } else {
-                  // Handle downloaded files via ModelDownloader
-                  await ModelDownloader.deleteModel(model.filename);
+                  // Handle downloaded files stored under DocumentDir/models
+                  const base = ReactNativeBlobUtil.fs.dirs.DocumentDir + '/models'
+                  const mainPath = `${base}/${model.filename}`
+                  if (await ReactNativeBlobUtil.fs.exists(mainPath)) {
+                    await ReactNativeBlobUtil.fs.unlink(mainPath)
+                  }
                   if (model.mmprojFilename) {
-                    await ModelDownloader.deleteModel(model.mmprojFilename);
+                    const mmpath = `${base}/${model.mmprojFilename}`
+                    if (await ReactNativeBlobUtil.fs.exists(mmpath)) {
+                      await ReactNativeBlobUtil.fs.unlink(mmpath)
+                    }
                   }
                 }
               } catch (fileError) {

@@ -1,3 +1,4 @@
+// Legacy downloader kept for small/foreground downloads.
 import RNBlobUtil from 'react-native-blob-util';
 import { getModelDownloadUrl } from '../utils/constants';
 

@@ -35,6 +35,10 @@
 	<string />
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app may use the microphone to enable voice input features for AI interactions.</string>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>fetch</string>
+    </array>
 	<key>UIAppFonts</key>
 	<array>
 		<string>MaterialDesignIcons.ttf</string>

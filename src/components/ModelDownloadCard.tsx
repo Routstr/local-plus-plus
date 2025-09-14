@@ -8,8 +8,8 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { ModelDownloader } from '../services/ModelDownloader';
-import type { DownloadProgress } from '../services/ModelDownloader';
+import BackgroundModelDownloadService from '../services/BackgroundModelDownloadService';
+import ReactNativeBlobUtil from 'react-native-blob-util';
 import { useTheme } from '../contexts/ThemeContext';
 
 // Common interfaces and types
@@ -248,32 +248,27 @@ function BaseModelDownloadCard({
   const styles = createStyles(theme);
   const [isDownloaded, setIsDownloaded] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [progress, setProgress] = useState<DownloadProgress | null>(null);
+  const [progress, setProgress] = useState<{ percentage: number; written: number; total: number } | null>(null);
   const [filePaths, setFilePaths] = useState<string[]>([]);
   const [downloadStatus, setDownloadStatus] = useState<string>('');
+  const [groupStatus, setGroupStatus] = useState<'queued' | 'running' | 'paused' | 'completed' | 'failed'>('queued');
+  const groupId = React.useMemo(() => `${title.replace(/\s+/g, '-').toLowerCase()}-${files.map(f=>f.filename).join(',')}`,[title, files]);
+  const subRef = React.useRef<null | (() => void)>(null);
+  const pollRef = React.useRef<NodeJS.Timeout | null>(null);
   const [useRowLayout, setUseRowLayout] = useState(true);
-
-  const downloader = new ModelDownloader();
 
   const checkIfDownloaded = React.useCallback(async () => {
     try {
-      const downloadStatuses = await Promise.all(
-        files.map((file) => ModelDownloader.isModelDownloaded(file.filename)),
+      const dir = ReactNativeBlobUtil.fs.dirs.DocumentDir + '/models';
+      const existsStatuses = await Promise.all(
+        files.map(async (file) => ReactNativeBlobUtil.fs.exists(`${dir}/${file.filename}`)),
       );
-
-      const allDownloaded = downloadStatuses.every((status) => status);
+      const allDownloaded = existsStatuses.every(Boolean);
       setIsDownloaded(allDownloaded);
 
       if (allDownloaded) {
-        const pathPromises = files.map((file) =>
-          ModelDownloader.getModelPath(file.filename),
-        );
-        const paths = await Promise.all(pathPromises);
-        // Filter out any null paths
-        const validPaths = paths.filter((path): path is string => path !== null);
-        if (validPaths.length === files.length) {
-          setFilePaths(validPaths);
-        }
+        const paths = files.map((f)=> `${dir}/${f.filename}`);
+        setFilePaths(paths);
       }
     } catch (error) {
       console.error('Error checking model status:', error);
@@ -297,46 +292,32 @@ function BaseModelDownloadCard({
       setIsDownloading(true);
       setProgress({ written: 0, total: 0, percentage: 0 });
 
-      const paths: string[] = [];
-      const progressWeight = 1 / files.length;
-
-      // ESLint disable for intentional sequential downloads
-
-      for (let i = 0; i < files.length; i += 1) {
-        const file = files[i];
-        if (file) {
-          const statusText = file.label || `file ${i + 1}`;
-          setDownloadStatus(`Downloading ${statusText}...`);
-
-          const path = await downloader.downloadModel(
-            file.repo,
-            file.filename,
-            (prog) => {
-              const baseProgress = i * progressWeight * 100;
-              const currentProgress = prog.percentage * progressWeight;
-              setProgress({
-                ...prog,
-                percentage: Math.round(baseProgress + currentProgress),
-              });
-            },
-          );
-
-          paths.push(path);
+      await BackgroundModelDownloadService.enqueueGroup({
+        id: groupId,
+        title,
+        repo: files[0]!.repo,
+        files: files.map(f => ({ filename: f.filename, label: f.label })),
+      });
+      setGroupStatus(await BackgroundModelDownloadService.status(groupId));
+      // Subscribe to progress
+      subRef.current && subRef.current();
+      subRef.current = BackgroundModelDownloadService.subscribe(groupId, (p) => {
+        setProgress({ percentage: p.percentage, written: p.written, total: p.total });
+        if (p.percentage >= 100) {
+          setGroupStatus('completed');
+          checkIfDownloaded();
         }
-      }
-
-
-      setFilePaths(paths);
-      setIsDownloaded(true);
-      setProgress(null);
-      setDownloadStatus('');
-
-      // Call onDownloaded callback if provided
-      if (onDownloaded) {
-        onDownloaded(...paths);
-      }
-
-      Alert.alert('Success', `${title} downloaded successfully!`);
+      });
+      // Poll status
+      pollRef.current && clearInterval(pollRef.current);
+      pollRef.current = setInterval(async () => {
+        const s = await BackgroundModelDownloadService.status(groupId);
+        setGroupStatus(s);
+        if (s === 'completed' || s === 'failed') {
+          pollRef.current && clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
+      }, 1000);
     } catch (error: any) {
       Alert.alert(
         'Download Failed',
@@ -347,6 +328,28 @@ function BaseModelDownloadCard({
     } finally {
       setIsDownloading(false);
     }
+  };
+
+  useEffect(() => {
+    return () => {
+      subRef.current && subRef.current();
+      if (pollRef.current) { clearInterval(pollRef.current); }
+    };
+  }, []);
+
+  const onPause = async () => {
+    await BackgroundModelDownloadService.pause(groupId);
+    setGroupStatus('paused');
+  };
+  const onResume = async () => {
+    await BackgroundModelDownloadService.resume(groupId);
+    setGroupStatus('running');
+  };
+  const onCancel = async () => {
+    await BackgroundModelDownloadService.cancel(groupId);
+    setGroupStatus('failed');
+    setProgress(null);
+    setDownloadStatus('');
   };
 
   const handleInitialize = async () => {
@@ -384,9 +387,16 @@ function BaseModelDownloadCard({
           style: 'destructive',
           onPress: async () => {
             try {
+              const RNBlob = (await import('react-native-blob-util')).default
+              const base = RNBlob.fs.dirs.DocumentDir + '/models'
               await Promise.all(
-                files.map((file) => ModelDownloader.deleteModel(file.filename)),
-              );
+                files.map(async (file) => {
+                  const path = `${base}/${file.filename}`
+                  if (await RNBlob.fs.exists(path)) {
+                    await RNBlob.fs.unlink(path)
+                  }
+                }),
+              )
               setIsDownloaded(false);
               setFilePaths([]);
             } catch (error: any) {
@@ -447,11 +457,26 @@ function BaseModelDownloadCard({
               {`(${formatSize(progress.written)} / ${formatSize(progress.total)})`}
             </Text>
           )}
+          {/* Controls */}
+          <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 8 }}>
+            {groupStatus === 'paused' ? (
+              <TouchableOpacity onPress={onResume} style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: theme.colors.primary, borderRadius: 6, marginHorizontal: 6 }}>
+                <Text style={{ color: theme.colors.white }}>Resume</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onPress={onPause} style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: theme.colors.primary, borderRadius: 6, marginHorizontal: 6 }}>
+                <Text style={{ color: theme.colors.white }}>Pause</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={onCancel} style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: theme.colors.error, borderRadius: 6, marginHorizontal: 6 }}>
+              <Text style={{ color: theme.colors.white }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
       <View style={styles.buttonContainer}>
-        {!isDownloaded && !isDownloading && (
+        {!isDownloaded && (
           <TouchableOpacity
             style={styles.downloadButton}
             onPress={handleDownload}

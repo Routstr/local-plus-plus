@@ -44,6 +44,8 @@ const ROUTSTR_TOKEN_KEY = '@routstr_api_token';
 const ROUTSTR_FAVORITES_KEY = '@routstr_favorites';
 const ROUTSTR_MODELS_CACHE_KEY = '@routstr_models_cache';
 const ROUTSTR_BASE_URL_KEY = '@routstr_base_url';
+const BGDL_GROUPS_KEY = '@bgdl_groups_v1';
+const BGDL_PREFS_KEY = '@bgdl_prefs_v1';
 
 // Default parameter values
 export const DEFAULT_CONTEXT_PARAMS: ContextParams = {
@@ -333,6 +335,111 @@ export const resetRoutstrBaseUrl = async (): Promise<void> => {
     console.error('Error resetting Routstr base URL:', error);
     throw error;
   }
+};
+
+// Background download models
+export type BackgroundDownloadStatus = 'queued' | 'running' | 'paused' | 'completed' | 'failed' | 'canceled'
+
+export interface BackgroundDownloadFileState {
+  filename: string
+  label?: string
+  written: number
+  total: number
+  percentage: number
+  status: BackgroundDownloadStatus
+  errorMessage?: string | null
+}
+
+export interface BackgroundDownloadGroupState {
+  id: string
+  title: string
+  repo: string
+  wifiOnly?: boolean
+  concurrency?: number
+  createdAt: number
+  updatedAt: number
+  status: BackgroundDownloadStatus
+  totalBytes: number
+  writtenBytes: number
+  percentage: number
+  files: Record<string, BackgroundDownloadFileState>
+}
+
+export interface BackgroundDownloadPreferences {
+  wifiOnly: boolean
+  allowOnBattery: boolean
+  maxConcurrency: number // 1-3
+  keepScreenAwake: boolean
+}
+
+const DEFAULT_BGDL_PREFS: BackgroundDownloadPreferences = {
+  wifiOnly: false,
+  allowOnBattery: true,
+  maxConcurrency: 1,
+  keepScreenAwake: false,
+};
+
+export const loadBackgroundDownloadPreferences = async (): Promise<BackgroundDownloadPreferences> => {
+  try {
+    const json = await AsyncStorage.getItem(BGDL_PREFS_KEY);
+    if (json) {return { ...DEFAULT_BGDL_PREFS, ...JSON.parse(json) };}
+    return DEFAULT_BGDL_PREFS;
+  } catch (error) {
+    console.error('Error loading bgdl prefs:', error);
+    return DEFAULT_BGDL_PREFS;
+  }
+};
+
+export const saveBackgroundDownloadPreferences = async (prefs: Partial<BackgroundDownloadPreferences>): Promise<void> => {
+  try {
+    const merged = { ...(await loadBackgroundDownloadPreferences()), ...prefs };
+    await AsyncStorage.setItem(BGDL_PREFS_KEY, JSON.stringify(merged));
+  } catch (error) {
+    console.error('Error saving bgdl prefs:', error);
+    throw error;
+  }
+};
+
+export const loadBackgroundDownloadGroups = async (): Promise<BackgroundDownloadGroupState[]> => {
+  try {
+    const json = await AsyncStorage.getItem(BGDL_GROUPS_KEY);
+    if (json) {return JSON.parse(json);} else {return [];}
+  } catch (error) {
+    console.error('Error loading bgdl groups:', error);
+    return [];
+  }
+};
+
+export const saveBackgroundDownloadGroups = async (groups: BackgroundDownloadGroupState[]): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(BGDL_GROUPS_KEY, JSON.stringify(groups));
+  } catch (error) {
+    console.error('Error saving bgdl groups:', error);
+    throw error;
+  }
+};
+
+export const upsertBackgroundDownloadGroup = async (group: BackgroundDownloadGroupState): Promise<void> => {
+  const groups = await loadBackgroundDownloadGroups();
+  const updated = [
+    ...groups.filter(g => g.id !== group.id),
+    group,
+  ];
+  await saveBackgroundDownloadGroups(updated);
+};
+
+export const updateBackgroundDownloadGroupPartial = async (groupId: string, patch: Partial<BackgroundDownloadGroupState>): Promise<BackgroundDownloadGroupState | null> => {
+  const groups = await loadBackgroundDownloadGroups();
+  const existing = groups.find(g => g.id === groupId);
+  if (!existing) {return null;}
+  const merged: BackgroundDownloadGroupState = { ...existing, ...patch, updatedAt: Date.now() } as BackgroundDownloadGroupState;
+  await upsertBackgroundDownloadGroup(merged);
+  return merged;
+};
+
+export const deleteBackgroundDownloadGroup = async (groupId: string): Promise<void> => {
+  const groups = await loadBackgroundDownloadGroups();
+  await saveBackgroundDownloadGroups(groups.filter(g => g.id !== groupId));
 };
 
 // Routstr favorites

@@ -23,7 +23,7 @@ import { Bubble } from '../components/Bubble';
 import { MaskedProgress } from '../components/MaskedProgress';
 import { HeaderButton } from '../components/HeaderButton';
 import { StopButton } from '../components/StopButton';
-import { ModelDownloader } from '../services/ModelDownloader';
+import RNBlobUtil from 'react-native-blob-util';
 import { createThemedStyles, chatDarkTheme, chatLightTheme } from '../styles/commonStyles';
 import { useTheme } from '../contexts/ThemeContext';
 import { MODELS } from '../utils/constants';
@@ -171,7 +171,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
       const keys: (keyof typeof MODELS)[] = ['SMOL_LM_3', 'GEMMA_3_4B_QAT', 'QWEN_3_4B'];
       const entries = await Promise.all(keys.map(async (k) => {
         const info = MODELS[k];
-        const isDownloaded = await ModelDownloader.isModelDownloaded(info.filename);
+        const isDownloaded = await RNBlobUtil.fs.exists(RNBlobUtil.fs.dirs.DocumentDir + '/models/' + info.filename);
         return isDownloaded ? ({
           id: k,
           name: info.name,
@@ -347,9 +347,9 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
 
       // Check if model is downloaded
       if (model.filename) {
-        const isDownloaded = await ModelDownloader.isModelDownloaded(model.filename);
+        const isDownloaded = await RNBlobUtil.fs.exists(RNBlobUtil.fs.dirs.DocumentDir + '/models/' + model.filename);
         if (isDownloaded) {
-          const modelPath = await ModelDownloader.getModelPath(model.filename);
+          const modelPath = RNBlobUtil.fs.dirs.DocumentDir + '/models/' + model.filename;
           if (modelPath) {
             await initializeLocalModel(modelPath);
           }

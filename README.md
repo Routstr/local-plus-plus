@@ -10,6 +10,36 @@ React Native chat app that runs local LLMs on-device and can switch to Routstr c
 - **Download manager**: Built-in model downloader for local models.
 - **Persistent params**: Context/completion params loaded from storage.
 
+## Background model downloads
+
+The app supports resilient background downloads for large model files (including split GGUF parts) on iOS and Android.
+
+Highlights:
+- Uses `@kesha-antonov/react-native-background-downloader` for background transfers that continue after backgrounding or app kill.
+- Uses `@notifee/react-native` for system notifications with progress and actions (Pause/Resume/Cancel).
+- Handles grouped downloads (e.g., model+mmproj, TTS+vocoder) and split `.gguf` parts as a single logical group with aggregate progress.
+- On relaunch, in‑flight tasks are reattached automatically and UI is kept in sync.
+
+Implementation notes:
+- Service: `src/services/BackgroundModelDownloadService.ts`
+- Storage: persisted group/file state and preferences in `src/utils/storage.ts`
+- Destination: files are downloaded to `DocumentDir/models/<filename>.tmp` and atomically renamed to `<filename>` on completion.
+- UI: `src/components/ModelDownloadCard.tsx` uses the background service; `src/screens/ModelManagerScreen.tsx` shows an Active Downloads tray.
+
+Android setup:
+- Manifest adds permissions: `POST_NOTIFICATIONS`, `WAKE_LOCK`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC`.
+- A notification channel "Model Downloads" is created at runtime.
+
+iOS setup:
+- `Info.plist` includes `UIBackgroundModes` with `fetch`.
+- `AppDelegate.mm` implements `application:handleEventsForBackgroundURLSession:completionHandler:` via RNBD.
+
+Testing:
+1) Start a large model download from Model Manager.
+2) Background the app or kill it; observe the OS notification continues and progress updates.
+3) Relaunch the app; the Active Downloads tray should reflect in‑flight groups and complete as files finish.
+4) Verify final files under `DocumentDir/models` and no leftover `.tmp` files.
+
 ## Where things live
 
 - Chat screen and drawer: `src/screens/SimpleChatScreen.tsx`

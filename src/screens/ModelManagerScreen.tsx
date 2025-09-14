@@ -4,6 +4,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { createThemedStyles } from '../styles/commonStyles';
 import { MODELS } from '../utils/constants';
 import ModelDownloadCard from '../components/ModelDownloadCard';
+import BackgroundModelDownloadService from '../services/BackgroundModelDownloadService';
 import CustomModelModal from '../components/CustomModelModal';
 import CustomModelCard from '../components/CustomModelCard';
 import type { CustomModel } from '../utils/storage';
@@ -21,6 +22,7 @@ export default function ModelManagerScreen({ navigation }: { navigation: any }) 
   const [routstrModels, setRoutstrModels] = useState<Array<{ id: string; name: string; maxCost: number; completionSatPerToken?: number }>>([]);
   const [isLoadingRoutstr, setIsLoadingRoutstr] = useState(false);
   const [routstrError, setRoutstrError] = useState<string | null>(null);
+  const [activeGroups, setActiveGroups] = useState<Array<{ id: string; title: string; percentage: number }>>([]);
   // debug removed
 
   useEffect(() => {
@@ -33,6 +35,25 @@ export default function ModelManagerScreen({ navigation }: { navigation: any }) 
       setFavorites(await loadRoutstrFavorites());
     };
     load();
+  }, []);
+
+  useEffect(() => {
+    // Rehydrate and subscribe to any active groups to show in a tray
+    BackgroundModelDownloadService.rehydrate().then(async () => {
+      const { loadBackgroundDownloadGroups } = await import('../utils/storage');
+      const groups = await loadBackgroundDownloadGroups();
+      const actives = groups.filter(g => g.status === 'running' || g.status === 'paused' || g.status === 'queued');
+      setActiveGroups(actives.map(g => ({ id: g.id, title: g.title, percentage: g.percentage })));
+      actives.forEach(g => {
+        BackgroundModelDownloadService.subscribe(g.id, (p) => {
+          setActiveGroups((prev) => {
+            const map = new Map(prev.map(x => [x.id, x] as const));
+            map.set(g.id, { id: g.id, title: g.title, percentage: p.percentage });
+            return Array.from(map.values());
+          });
+        });
+      });
+    }).catch(() => {});
   }, []);
 
   const addFavorite = async (id: string) => {
@@ -101,6 +122,19 @@ export default function ModelManagerScreen({ navigation }: { navigation: any }) 
 
       {mode === 'local' ? (
         <ScrollView contentContainerStyle={themedStyles.scrollContent}>
+          {activeGroups.length > 0 && (
+            <View style={{ marginHorizontal: 16, marginBottom: 8, padding: 12, backgroundColor: theme.colors.surface, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border }}>
+              <Text style={{ fontWeight: '600', color: theme.colors.text, marginBottom: 8 }}>Active Downloads</Text>
+              {activeGroups.map(g => (
+                <View key={g.id} style={{ marginVertical: 6 }}>
+                  <Text style={{ color: theme.colors.textSecondary }}>{g.title}</Text>
+                  <View style={{ height: 4, backgroundColor: theme.colors.border, borderRadius: 2, marginTop: 4 }}>
+                    <View style={{ width: `${g.percentage}%`, height: '100%', backgroundColor: theme.colors.primary, borderRadius: 2 }} />
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
           {defaultLocalModels.map(({ key, info }) => (
             <ModelDownloadCard
               key={key}

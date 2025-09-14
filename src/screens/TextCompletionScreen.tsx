@@ -20,7 +20,7 @@ import type { TokenData } from 'llama.rn';
 import ModelDownloadCard from '../components/ModelDownloadCard';
 import ModelDropdown from '../components/ModelDropdown';
 import type { UnifiedModelItemProps } from '../components/UnifiedModelItem';
-import { ModelDownloader } from '../services/ModelDownloader';
+import RNBlobUtil from 'react-native-blob-util';
 import ContextParamsModal from '../components/ContextParamsModal';
 import CompletionParamsModal from '../components/CompletionParamsModal';
 import CustomModelModal from '../components/CustomModelModal';
@@ -503,9 +503,9 @@ export default function TextCompletionScreen({
 
     // Check if model is downloaded
     if (model.filename) {
-      const isDownloaded = await ModelDownloader.isModelDownloaded(model.filename);
+      const isDownloaded = await RNBlobUtil.fs.exists(RNBlobUtil.fs.dirs.DocumentDir + '/models/' + model.filename);
       if (isDownloaded) {
-        const modelPath = await ModelDownloader.getModelPath(model.filename);
+        const modelPath = RNBlobUtil.fs.dirs.DocumentDir + '/models/' + model.filename;
         if (modelPath) {
           await handleInitModel(modelPath);
         }

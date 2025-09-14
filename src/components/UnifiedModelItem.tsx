@@ -6,7 +6,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { ModelDownloader } from '../services/ModelDownloader';
+import RNBlobUtil from 'react-native-blob-util';
 import { useTheme } from '../contexts/ThemeContext';
 import { formatSatsCompact } from '../utils/pricing';
 
@@ -116,18 +116,20 @@ export default function UnifiedModelItem({
     if (type === 'local' && filename) {
       checkDownloadStatus();
     }
-  }, [filename, type]);
+    // Also re-check when mmproj changes since it's part of completion state
+  }, [filename, type, mmproj]);
 
   const checkDownloadStatus = async () => {
     if (!filename) {return;}
 
     try {
       setIsChecking(true);
-      const mainModelDownloaded = await ModelDownloader.isModelDownloaded(filename);
+      const base = RNBlobUtil.fs.dirs.DocumentDir + '/models';
+      const mainModelDownloaded = await RNBlobUtil.fs.exists(`${base}/${filename}`);
       let allDownloaded = mainModelDownloaded;
 
       if (mmproj) {
-        const mmprojDownloaded = await ModelDownloader.isModelDownloaded(mmproj);
+        const mmprojDownloaded = await RNBlobUtil.fs.exists(`${base}/${mmproj}`);
         allDownloaded = mainModelDownloaded && mmprojDownloaded;
       }
 
