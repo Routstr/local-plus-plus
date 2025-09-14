@@ -274,7 +274,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
             messagesRef.current = [];
             setMessagesVersion((prev) => prev + 1);
             addSystemMessage(
-              "Hello! I'm ready to chat with you. How can I help you today?",
+              "Hello! How can I help you today?",
             );
           },
         },
@@ -297,7 +297,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
       // Add welcome message only if no messages exist
       if (messagesRef.current.length === 0) {
         addSystemMessage(
-          "Hello! I'm ready to chat with you. How can I help you today?",
+          "Hello! How can I help you today?",
         );
       }
     } catch (error: any) {
@@ -325,7 +325,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
       setIsModelReady(true);
 
       if (messagesRef.current.length === 0) {
-        addSystemMessage("Hello! I'm ready to chat with you. How can I help you today?");
+        addSystemMessage("Hello! How can I help you today?");
       }
       // Update balance when starting a Routstr session
       void refreshBalance(false);
