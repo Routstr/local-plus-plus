@@ -1,3 +1,4 @@
+import 'react-native-reanimated'
 import { AppRegistry } from 'react-native'
 import NativeCustomEvent from 'react-native/Libraries/Events/CustomEvent'
 import App from './src/App.tsx'

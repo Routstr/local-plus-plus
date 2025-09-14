@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { MessageType } from '@flyerhq/react-native-chat-ui';
 import type {
   ContextParams as LlamaContextParams,
   CompletionParams as LlamaCompletionParams,
@@ -78,6 +79,184 @@ export const DEFAULT_MCP_CONFIG: MCPConfig = {
 };
 
 export const DEFAULT_ROUTSTR_BASE_URL = 'https://api.routstr.com';
+
+// Chat sessions & messages (Chat Histories)
+export type SessionProvider = 'local' | 'routstr' | null
+
+export interface SessionMeta {
+  id: string
+  title: string
+  createdAt: number
+  updatedAt: number
+  messageCount: number
+  provider: SessionProvider
+  modelId: string | null
+  systemPrompt: string
+}
+
+// Reuse the existing welcome message and system prompt content
+export const DEFAULT_SYSTEM_PROMPT =
+  'You are a helpful, harmless, and honest AI assistant. Be concise and helpful in your responses.';
+
+export const WELCOME_MESSAGE = "Hello! I'm ready to chat with you. How can I help you today?";
+
+// Storage keys for Chat Histories
+const CHAT_SESSIONS_INDEX_KEY = '@chat_sessions_index';
+const CHAT_SESSION_MESSAGES_KEY_PREFIX = '@chat_session:'; // @chat_session:<id>
+const CHAT_CURRENT_SESSION_ID_KEY = '@chat_current_session_id';
+
+const generateId = () => Math.random().toString(36).substring(2, 11);
+
+export const loadChatSessionsIndex = async (): Promise<SessionMeta[]> => {
+  try {
+    const json = await AsyncStorage.getItem(CHAT_SESSIONS_INDEX_KEY);
+    if (!json) { return []; }
+    const list = JSON.parse(json) as SessionMeta[];
+    return Array.isArray(list) ? list : [];
+  } catch (error) {
+    console.error('Error loading chat sessions index:', error);
+    return [];
+  }
+};
+
+export const saveChatSessionsIndex = async (list: SessionMeta[]): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(CHAT_SESSIONS_INDEX_KEY, JSON.stringify(list));
+  } catch (error) {
+    console.error('Error saving chat sessions index:', error);
+    throw error;
+  }
+};
+
+export const loadCurrentChatId = async (): Promise<string | null> => {
+  try {
+    return await AsyncStorage.getItem(CHAT_CURRENT_SESSION_ID_KEY);
+  } catch (error) {
+    console.error('Error loading current chat id:', error);
+    return null;
+  }
+};
+
+export const saveCurrentChatId = async (id: string): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(CHAT_CURRENT_SESSION_ID_KEY, id);
+  } catch (error) {
+    console.error('Error saving current chat id:', error);
+    throw error;
+  }
+};
+
+const sessionMessagesKey = (id: string) => `${CHAT_SESSION_MESSAGES_KEY_PREFIX}${id}`;
+
+export const loadChatMessages = async (id: string): Promise<MessageType.Any[]> => {
+  try {
+    const json = await AsyncStorage.getItem(sessionMessagesKey(id));
+    if (!json) { return []; }
+    const list = JSON.parse(json) as MessageType.Any[];
+    return Array.isArray(list) ? list : [];
+  } catch (error) {
+    console.error('Error loading chat messages:', error);
+    return [];
+  }
+};
+
+export const saveChatMessages = async (id: string, msgs: MessageType.Any[]): Promise<void> => {
+  try {
+    // Persist messages (newest-first as provided)
+    await AsyncStorage.setItem(sessionMessagesKey(id), JSON.stringify(msgs));
+
+    // Update index meta: updatedAt and messageCount
+    const index = await loadChatSessionsIndex();
+    const now = Date.now();
+    const next = index.map((s) => s.id === id ? { ...s, updatedAt: now, messageCount: msgs.length } : s);
+    await saveChatSessionsIndex(next);
+  } catch (error) {
+    console.error('Error saving chat messages:', error);
+    throw error;
+  }
+};
+
+export const createChatSession = async (initial?: Partial<SessionMeta>): Promise<SessionMeta> => {
+  const id = initial?.id || generateId();
+  const now = Date.now();
+  const title = (initial?.title && initial.title.trim().length > 0) ? initial.title.trim() : 'New chat';
+  const systemPrompt = initial?.systemPrompt || DEFAULT_SYSTEM_PROMPT;
+  const provider = (initial?.provider ?? null) as SessionProvider;
+  const modelId = initial?.modelId ?? null;
+
+  const meta: SessionMeta = {
+    id,
+    title,
+    createdAt: now,
+    updatedAt: now,
+    messageCount: 1, // Seed with welcome message
+    provider,
+    modelId,
+    systemPrompt,
+  };
+
+  const welcomeMessage: MessageType.Text = {
+    id: generateId(),
+    author: { id: 'assistant' },
+    createdAt: now,
+    type: 'text',
+    text: WELCOME_MESSAGE,
+    metadata: { system: true },
+  };
+
+  // Persist new session
+  const index = await loadChatSessionsIndex();
+  const nextIndex = [meta, ...index];
+  await AsyncStorage.setItem(sessionMessagesKey(id), JSON.stringify([welcomeMessage]));
+  await saveChatSessionsIndex(nextIndex);
+  await saveCurrentChatId(id);
+
+  return meta;
+};
+
+export const renameChatSession = async (id: string, title: string): Promise<void> => {
+  try {
+    const nextTitle = (title || '').trim();
+    const index = await loadChatSessionsIndex();
+    const now = Date.now();
+    const next = index.map((s) => s.id === id ? { ...s, title: nextTitle || s.title, updatedAt: now } : s);
+    await saveChatSessionsIndex(next);
+  } catch (error) {
+    console.error('Error renaming chat session:', error);
+    throw error;
+  }
+};
+
+export const deleteChatSession = async (id: string): Promise<void> => {
+  try {
+    const index = await loadChatSessionsIndex();
+    const next = index.filter((s) => s.id !== id);
+    await saveChatSessionsIndex(next);
+    await AsyncStorage.removeItem(sessionMessagesKey(id));
+    const current = await loadCurrentChatId();
+    if (current === id) {
+      await AsyncStorage.removeItem(CHAT_CURRENT_SESSION_ID_KEY);
+    }
+  } catch (error) {
+    console.error('Error deleting chat session:', error);
+    throw error;
+  }
+};
+
+export const updateSessionMeta = async (
+  id: string,
+  partial: Partial<Pick<SessionMeta, 'provider' | 'modelId' | 'systemPrompt' | 'title'>>,
+): Promise<void> => {
+  try {
+    const index = await loadChatSessionsIndex();
+    const now = Date.now();
+    const next = index.map((s) => s.id === id ? { ...s, ...partial, updatedAt: now } : s);
+    await saveChatSessionsIndex(next);
+  } catch (error) {
+    console.error('Error updating session meta:', error);
+    throw error;
+  }
+};
 
 // Storage functions for context parameters
 export const saveContextParams = async (

@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Chat } from '@flyerhq/react-native-chat-ui';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, DrawerActions } from '@react-navigation/native';
 import type { MessageType } from '@flyerhq/react-native-chat-ui';
 import ModelDropdown from '../components/ModelDropdown';
 import type { UnifiedModelItemProps } from '../components/UnifiedModelItem';
@@ -28,7 +28,22 @@ import { createThemedStyles, chatDarkTheme, chatLightTheme } from '../styles/com
 import { useTheme } from '../contexts/ThemeContext';
 import { MODELS } from '../utils/constants';
 import type { ContextParams } from '../utils/storage';
-import { loadContextParams, loadRoutstrFavorites, loadRoutstrModelsCache } from '../utils/storage';
+import {
+  DEFAULT_SYSTEM_PROMPT,
+  WELCOME_MESSAGE,
+  createChatSession,
+  loadChatMessages,
+  saveChatMessages,
+  loadCurrentChatId,
+  saveCurrentChatId,
+  renameChatSession,
+  updateSessionMeta,
+  loadChatSessionsIndex,
+  type SessionMeta,
+  loadContextParams,
+  loadRoutstrFavorites,
+  loadRoutstrModelsCache,
+} from '../utils/storage';
 import type { LLMMessage } from '../utils/llmMessages';
 import type { LLMProvider } from '../services/llm/LLMProvider';
 import { LocalLLMProvider } from '../services/llm/LocalLLMProvider';
@@ -50,15 +65,15 @@ const assistant = { id: 'assistant' };
 
 const randId = () => Math.random().toString(36).substr(2, 9);
 
-const DEFAULT_SYSTEM_PROMPT =
-  'You are a helpful, harmless, and honest AI assistant. Be concise and helpful in your responses.';
-
 export default function SimpleChatScreen({ navigation, route }: { navigation: any, route: any }) {
   const { isDark, theme } = useTheme();
   const themedStyles = createThemedStyles(theme.colors);
 
   const messagesRef = useRef<MessageType.Any[]>([]);
   const [, setMessagesVersion] = useState(0); // For UI updates
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const activeSessionMetaRef = useRef<SessionMeta | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isInitLoading, setIsInitLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [llm, setLlm] = useState<LLMProvider | null>(null);
@@ -193,6 +208,48 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
     setContextParams(params);
   };
 
+  const scheduleSaveMessages = useCallback(() => {
+    const id = activeChatId;
+    if (!id) { return; }
+    if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); }
+    saveTimerRef.current = setTimeout(() => { void saveChatMessages(id, messagesRef.current); }, 300);
+  }, [activeChatId]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      let cancelled = false;
+      const loadSession = async () => {
+        try {
+          const routeId: string | undefined = route?.params?.chatId;
+          let id = routeId || (await loadCurrentChatId());
+          let index = await loadChatSessionsIndex();
+          if (!id || !index.find((s) => s.id === id)) {
+            const created = await createChatSession();
+            id = created.id;
+            index = [created, ...index];
+          }
+          await saveCurrentChatId(id);
+          if (cancelled) { return; }
+          setActiveChatId(id);
+          const meta = index.find((s) => s.id === id) || null;
+          activeSessionMetaRef.current = meta;
+          if (meta?.systemPrompt) { setSystemPrompt(meta.systemPrompt); }
+          if (meta?.provider) { setProvider(meta.provider as Provider); }
+          if (meta?.modelId) { setSelectedModelId(meta.modelId || undefined); }
+
+          const msgs = await loadChatMessages(id);
+          if (cancelled) { return; }
+          messagesRef.current = Array.isArray(msgs) ? msgs : [];
+          setMessagesVersion((v) => v + 1);
+        } catch {
+          // ignore load errors
+        }
+      };
+      void loadSession();
+      return () => { cancelled = true; };
+    }, [route?.params?.chatId])
+  );
+
   const buildLLMMessages = (): LLMMessage[] => {
     const conversationMessages: LLMMessage[] = [
       {
@@ -224,7 +281,8 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
   const addMessage = useCallback((message: MessageType.Any) => {
     messagesRef.current = [message, ...messagesRef.current];
     setMessagesVersion((prev) => prev + 1);
-  }, []);
+    scheduleSaveMessages();
+  }, [scheduleSaveMessages]);
 
   const updateMessage = (
     messageId: string,
@@ -239,6 +297,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
         return msg;
       });
       setMessagesVersion((prev) => prev + 1);
+      scheduleSaveMessages();
     }
   };
 
@@ -273,14 +332,13 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
           onPress: () => {
             messagesRef.current = [];
             setMessagesVersion((prev) => prev + 1);
-            addSystemMessage(
-              "Hello! I'm ready to chat with you. How can I help you today?",
-            );
+            addSystemMessage(WELCOME_MESSAGE);
+            scheduleSaveMessages();
           },
         },
       ],
     );
-  }, [addSystemMessage]);
+  }, [addSystemMessage, scheduleSaveMessages]);
 
   const initializeLocalModel = async (modelPath: string) => {
     try {
@@ -296,9 +354,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
 
       // Add welcome message only if no messages exist
       if (messagesRef.current.length === 0) {
-        addSystemMessage(
-          "Hello! I'm ready to chat with you. How can I help you today?",
-        );
+        addSystemMessage(WELCOME_MESSAGE);
       }
     } catch (error: any) {
       Alert.alert('Error', `Failed to initialize model: ${error.message}`);
@@ -322,10 +378,13 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
       setSelectedModelName(model.name);
       setSelectedModelId(model.id);
       setProvider('routstr');
+      if (activeChatId) {
+        await updateSessionMeta(activeChatId, { provider: 'routstr', modelId: model.id });
+      }
       setIsModelReady(true);
 
       if (messagesRef.current.length === 0) {
-        addSystemMessage("Hello! I'm ready to chat with you. How can I help you today?");
+        addSystemMessage(WELCOME_MESSAGE);
       }
       // Update balance when starting a Routstr session
       void refreshBalance(false);
@@ -344,6 +403,9 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
       setProvider('local');
       setSelectedModelName(model.name);
       setSelectedModelId(model.id);
+      if (activeChatId) {
+        await updateSessionMeta(activeChatId, { provider: 'local', modelId: model.id });
+      }
 
       // Check if model is downloaded
       if (model.filename) {
@@ -417,7 +479,10 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
         </TouchableOpacity>
       ),
       headerLeft: () => (
-        isModelReady ? <HeaderButton iconName="refresh" onPress={handleReset} /> : null
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <HeaderButton iconName="menu" onPress={() => navigation.dispatch(DrawerActions.openDrawer())} />
+          {isModelReady ? <HeaderButton iconName="refresh" onPress={handleReset} /> : null}
+        </View>
       ),
       headerRight: () => (
         routstrToken && provider === 'routstr' ? (
@@ -444,6 +509,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
   const handleSendPress = async (message: MessageType.PartialText) => {
     if (isGenerating) {return;}
 
+    const hadPriorUserBefore = messagesRef.current.some((m) => m.type === 'text' && (m as MessageType.Text).author.id === user.id);
     const userMessage: MessageType.Text = {
       author: user,
       createdAt: Date.now(),
@@ -453,6 +519,23 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
     };
 
     addMessage(userMessage);
+    // Auto-title for new chats on first message
+    const firstUserMessage = (message.text || '').trim();
+    if (activeChatId && firstUserMessage.length > 0) {
+      const metaTitle = activeSessionMetaRef.current?.title || 'New chat';
+      if (metaTitle === 'New chat' && !hadPriorUserBefore) {
+        const newTitle = firstUserMessage
+          .replace(/[\n\r]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .replace(/[.,!?;:'"()\[\]{}\\/<>@#$%^&*_+=~`|–—…-]+/g, '')
+          .trim()
+          .slice(0, 40) || 'New chat';
+        try {
+          await renameChatSession(activeChatId, newTitle);
+          activeSessionMetaRef.current = { ...(activeSessionMetaRef.current as SessionMeta), title: newTitle } as SessionMeta;
+        } catch {}
+      }
+    }
     setIsGenerating(true);
 
     try {
@@ -491,6 +574,8 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
     } finally {
       setIsGenerating(false);
       if (routstrToken) {void refreshBalance(true);}
+      // Save at boundary
+      scheduleSaveMessages();
     }
   };
 

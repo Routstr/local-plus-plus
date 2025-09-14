@@ -6,6 +6,7 @@ import {
 } from 'react-native-gesture-handler';
 import { enableScreens } from 'react-native-screens';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { toggleNativeLog, addNativeLogListener } from 'llama.rn';
 import SimpleChatScreen from './screens/SimpleChatScreen';
@@ -19,6 +20,7 @@ import RoutstrSettingsScreen from './screens/RoutstrSettingsScreen';
 // import TextCompletionScreen from './screens/TextCompletionScreen'
 // import EmbeddingScreen from './screens/EmbeddingScreen'
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import ChatDrawer from './components/ChatDrawer';
 import { refreshAndCacheRoutstrModels } from './services/RoutstrModelsService';
 // import { Menu } from './components/Menu'
 
@@ -53,6 +55,7 @@ enableScreens();
 // }
 
 const Stack = createNativeStackNavigator();
+const Drawer = createDrawerNavigator();
 
 function AppContent() {
   const { theme } = useTheme();
@@ -70,47 +73,61 @@ function AppContent() {
     });
     return () => schedule.cancel && schedule.cancel();
   }, []);
+  const StackNavigator = () => (
+    <Stack.Navigator
+      initialRouteName="SimpleChat"
+      screenOptions={{
+        headerStyle: { backgroundColor: theme.colors.surface },
+        headerTitleStyle: { color: theme.colors.text },
+        headerTintColor: theme.colors.primary,
+      }}
+    >
+      <Stack.Screen
+        name="SimpleChat"
+        component={SimpleChatScreen}
+        options={{ title: 'Chat' }}
+      />
+      <Stack.Screen
+        name="ModelManager"
+        component={ModelManagerScreen}
+        options={{ title: 'Model Manager' }}
+      />
+      <Stack.Screen
+        name="RoutstrSettings"
+        component={RoutstrSettingsScreen}
+        options={{ title: 'Routstr Settings' }}
+      />
+      {/**
+       * The following screens are intentionally commented out to keep the app minimal.
+       * Restore as needed.
+       */}
+      {/**
+      <Stack.Screen name="Home" component={HomeScreen} />
+      <Stack.Screen name="TextCompletion" component={TextCompletionScreen} />
+      <Stack.Screen name="Multimodal" component={MultimodalScreen} />
+      <Stack.Screen name="ToolCalling" component={ToolCallsScreen} />
+      <Stack.Screen name="Embeddings" component={EmbeddingScreen} />
+      <Stack.Screen name="TTS" component={TTSScreen} />
+      <Stack.Screen name="ModelInfo" component={ModelInfoScreen} />
+      <Stack.Screen name="Bench" component={BenchScreen} />
+      */}
+    </Stack.Navigator>
+  );
+
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <NavigationContainer theme={navigationTheme}>
-        <Stack.Navigator
-          initialRouteName="SimpleChat"
+        <Drawer.Navigator
+          id="RootDrawer"
           screenOptions={{
-            headerStyle: { backgroundColor: theme.colors.surface },
-            headerTitleStyle: { color: theme.colors.text },
-            headerTintColor: theme.colors.primary,
+            drawerType: 'slide',
+            headerShown: false,
+            drawerStyle: { width: 320, backgroundColor: theme.colors.surface },
           }}
+          drawerContent={() => <ChatDrawer />}
         >
-          <Stack.Screen
-            name="SimpleChat"
-            component={SimpleChatScreen}
-            options={{ title: 'Chat' }}
-          />
-          <Stack.Screen
-            name="ModelManager"
-            component={ModelManagerScreen}
-            options={{ title: 'Model Manager' }}
-          />
-          <Stack.Screen
-            name="RoutstrSettings"
-            component={RoutstrSettingsScreen}
-            options={{ title: 'Routstr Settings' }}
-          />
-          {/**
-           * The following screens are intentionally commented out to keep the app minimal.
-           * Restore as needed.
-           */}
-          {/**
-          <Stack.Screen name="Home" component={HomeScreen} />
-          <Stack.Screen name="TextCompletion" component={TextCompletionScreen} />
-          <Stack.Screen name="Multimodal" component={MultimodalScreen} />
-          <Stack.Screen name="ToolCalling" component={ToolCallsScreen} />
-          <Stack.Screen name="Embeddings" component={EmbeddingScreen} />
-          <Stack.Screen name="TTS" component={TTSScreen} />
-          <Stack.Screen name="ModelInfo" component={ModelInfoScreen} />
-          <Stack.Screen name="Bench" component={BenchScreen} />
-          */}
-        </Stack.Navigator>
+          <Drawer.Screen name="MainStack" component={StackNavigator} />
+        </Drawer.Navigator>
       </NavigationContainer>
     </GestureHandlerRootView>
   );
