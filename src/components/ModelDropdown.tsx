@@ -9,6 +9,7 @@ import {
   Animated,
   Dimensions,
   Platform,
+  InteractionManager,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import UnifiedModelItem from './UnifiedModelItem';
@@ -204,8 +205,18 @@ export default function ModelDropdown({
   }, [visible, fadeAnim, slideAnim]);
 
   const handleSelectModel = (model: UnifiedModelItemProps) => {
-    onSelectModel(model);
+    if (!canDismiss) { return; }
     onClose();
+    const run = () => onSelectModel(model);
+    if (Platform.OS === 'ios') {
+      requestAnimationFrame(() => {
+        InteractionManager.runAfterInteractions(() => {
+          setTimeout(run, 0);
+        });
+      });
+    } else {
+      setTimeout(run, 0);
+    }
   };
 
   return (
