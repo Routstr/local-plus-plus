@@ -9,10 +9,9 @@ import {
   Clipboard,
   StyleSheet,
 } from 'react-native';
-import ModelDownloadCard from '../components/ModelDownloadCard';
+import { LocalModelCard } from '../components/ModelDownloadCard';
 import ContextParamsModal from '../components/ContextParamsModal';
 import CustomModelModal from '../components/CustomModelModal';
-import CustomModelCard from '../components/CustomModelCard';
 import { MaskedProgress } from '../components/MaskedProgress';
 import { HeaderButton } from '../components/HeaderButton';
 import { createThemedStyles } from '../styles/commonStyles';
@@ -335,15 +334,13 @@ export default function BenchScreen({ navigation }: { navigation: any }) {
                 Custom Models
               </Text>
               {customModels
-                .filter((model) => !model.mmprojFilename) // Only show non-multimodal models
+                .filter((model) => !model.mmprojFilename)
                 .map((model) => (
-                  <CustomModelCard
+                  <LocalModelCard
                     key={model.id}
+                    kind="custom"
                     model={model}
-                    onInitialize={(modelPath: string) =>
-                      initializeModel(modelPath)
-                    }
-                    onModelRemoved={handleCustomModelRemoved}
+                    onInitialize={(modelPath: string) => initializeModel(modelPath)}
                     initializeButtonText="Bench"
                   />
                 ))}
@@ -363,16 +360,15 @@ export default function BenchScreen({ navigation }: { navigation: any }) {
           {/* Predefined Models Section */}
           <Text style={themedStyles.modelSectionTitle}>Default Models</Text>
           {LLM_MODELS.map(([key, model]) => (
-            <ModelDownloadCard
+            <LocalModelCard
               key={key}
+              kind="default"
               title={model.name}
               repo={model.repo}
               filename={model.filename}
               size={model.size}
               initializeButtonText="Bench"
-              onInitialize={(modelPath: string) =>
-                initializeModel(modelPath, key)
-              }
+              onInitialize={(modelPath: string) => initializeModel(modelPath, key)}
             />
           ))}
         </ScrollView>

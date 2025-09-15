@@ -9,12 +9,8 @@ import {
   Dimensions,
   Clipboard,
 } from 'react-native';
-import ModelDownloadCard, {
-  TTSModelDownloadCard,
-  MtmdModelDownloadCard,
-} from '../components/ModelDownloadCard';
+import ModelDownloadCard, { TTSModelDownloadCard, MtmdModelDownloadCard, LocalModelCard } from '../components/ModelDownloadCard';
 import CustomModelModal from '../components/CustomModelModal';
-import CustomModelCard from '../components/CustomModelCard';
 import { createThemedStyles } from '../styles/commonStyles';
 import { useTheme } from '../contexts/ThemeContext';
 import { MODELS } from '../utils/constants';
@@ -417,17 +413,13 @@ export default function ModelInfoScreen() {
           <>
             <Text style={themedStyles.modelSectionTitle}>Custom Models</Text>
             {customModels.map((customModel) => (
-              <CustomModelCard
+              <LocalModelCard
                 key={customModel.id}
+                kind="custom"
                 model={customModel}
                 onInitialize={(modelPath: string, mmprojPath?: string) => {
-                  handleCustomModelInitialize(
-                    customModel,
-                    modelPath,
-                    mmprojPath,
-                  );
+                  handleCustomModelInitialize(customModel, modelPath, mmprojPath);
                 }}
-                onModelRemoved={handleCustomModelRemoved}
                 initializeButtonText="See"
               />
             ))}
