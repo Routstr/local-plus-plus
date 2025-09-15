@@ -36,6 +36,7 @@ import { RoutstrProvider } from '../services/llm/RoutstrProvider';
 import { loadRoutstrToken, saveRoutstrToken } from '../utils/storage';
 import { loadRoutstrBaseUrl } from '../utils/storage';
 import { fetchRoutstrWalletInfo } from '../services/RoutstrWalletService';
+import ContextParamsModal from '../components/ContextParamsModal';
 
 type Provider = 'local' | 'routstr'
 
@@ -80,6 +81,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
   const [balanceMsats, setBalanceMsats] = useState<number | null>(null);
   const [displayedBalanceMsats, setDisplayedBalanceMsats] = useState<number | null>(null);
   const balanceAnimFrameRef = useRef<number | null>(null);
+  const [showContextParamsModal, setShowContextParamsModal] = useState(false);
 
   useEffect(() => {
     const loadToken = async () => {
@@ -193,6 +195,24 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
     setContextParams(params);
   };
 
+  const reinitializeLocalWithParams = async (params: ContextParams) => {
+    if (provider !== 'local' || !selectedModelId) { return; }
+    try { await llm?.release(); } catch {}
+    const info = MODELS[selectedModelId as keyof typeof MODELS];
+    const filename = info?.filename;
+    if (!filename) { return; }
+    const isDownloaded = await ModelDownloader.isModelDownloaded(filename);
+    if (!isDownloaded) {
+      Alert.alert('Model Not Downloaded', `Please download ${selectedModelName} first from one of the other screens.`, [{ text: 'OK' }]);
+      return;
+    }
+    const modelPath = await ModelDownloader.getModelPath(filename);
+    if (!modelPath) { return; }
+    messagesRef.current = [];
+    setMessagesVersion((prev) => prev + 1);
+    await initializeLocalModel(modelPath, params);
+  };
+
   const buildLLMMessages = (): LLMMessage[] => {
     const conversationMessages: LLMMessage[] = [
       {
@@ -282,12 +302,12 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
     );
   }, [addSystemMessage]);
 
-  const initializeLocalModel = async (modelPath: string) => {
+  const initializeLocalModel = async (modelPath: string, overrideParams?: ContextParams) => {
     try {
       setIsInitLoading(true);
       setInitProgress(0);
 
-      const params = contextParams || (await loadContextParams());
+      const params = overrideParams || contextParams || (await loadContextParams());
       const provider = new LocalLLMProvider(modelPath.split('/').pop() || 'Local Model');
       await provider.initialize({ model: modelPath, params, onProgress: (p) => setInitProgress(p) });
       setLlm(provider);
@@ -420,11 +440,15 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
         isModelReady ? <HeaderButton iconName="refresh" onPress={handleReset} /> : null
       ),
       headerRight: () => (
-        routstrToken && provider === 'routstr' ? (
+        provider === 'routstr' && routstrToken ? (
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Text style={{ marginRight: 8, fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary }}>
               {displayedBalanceMsats != null ? `${displayedBalanceMsats.toLocaleString()} msats` : '—'}
             </Text>
+          </View>
+        ) : provider === 'local' ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <HeaderButton iconName="cog-outline" onPress={() => setShowContextParamsModal(true)} />
           </View>
         ) : null
       ),
@@ -586,6 +610,15 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
           </View>
         </View>
       </Modal>
+      <ContextParamsModal
+        visible={showContextParamsModal}
+        onClose={() => setShowContextParamsModal(false)}
+        onSave={async (params) => {
+          handleSaveContextParams(params);
+          await reinitializeLocalWithParams(params);
+          setShowContextParamsModal(false);
+        }}
+      />
     </View>
   );
 }
