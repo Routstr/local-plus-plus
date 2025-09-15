@@ -18,6 +18,8 @@ export interface CustomModelInfo {
   error?: string
 }
 
+import { loadHfToken } from '../utils/storage';
+
 export class HuggingFaceAPI {
   private static readonly baseUrl = 'https://huggingface.co/api/models';
 
@@ -26,7 +28,10 @@ export class HuggingFaceAPI {
    */
   static async fetchModelInfo(modelId: string): Promise<CustomModelInfo> {
     try {
-      const response = await fetch(`${this.baseUrl}/${modelId}`);
+      const token = await loadHfToken();
+      const response = await fetch(`${this.baseUrl}/${modelId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
 
       if (!response.ok) {
         if (response.status === 404) {
