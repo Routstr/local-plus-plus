@@ -174,7 +174,7 @@ export const createThemedStyles = (colors: ThemeColors) => {
       backgroundColor: colors.disabled,
     },
     primaryButtonActive: {
-      backgroundColor: isDark ? '#C77710' : '#D87E16',
+      backgroundColor: isDark ? '#3A3A3C' : '#111111',
       transform: [{ scale: 0.98 }],
       shadowOpacity: isDark ? 0.6 : 0.35,
     },
