@@ -419,6 +419,13 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
   ];
 
   useLayoutEffect(() => {
+    const headerName = (() => {
+      const name = selectedModelName || '';
+      // Prefer the portion after ':' if present, else use last path segment
+      const afterColon = name.includes(':') ? name.split(':')[1]?.trim() || name : name;
+      const base = afterColon.includes('/') ? afterColon.split('/').pop() || afterColon : afterColon;
+      return base.length > 16 ? `${base.slice(0, 16)}…` : base;
+    })();
     navigation.setOptions({
       headerTitleAlign: 'center',
       headerTitle: () => (
@@ -428,8 +435,17 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           style={{ flexDirection: 'row', alignItems: 'center' }}
         >
-          <Text style={{ fontSize: 17, fontWeight: '600', color: theme.colors.text }}>
-            {selectedModelName}
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={{
+              fontSize: 17,
+              fontWeight: '600',
+              color: theme.colors.text,
+              maxWidth: 220,
+            }}
+          >
+            {headerName || 'Select a model'}
           </Text>
           <Text style={{ marginLeft: 6, fontSize: 16, color: theme.colors.textSecondary }}>
             ▼
