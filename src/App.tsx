@@ -90,7 +90,7 @@ function AppContent() {
           screenOptions={{
             headerStyle: { backgroundColor: theme.colors.surface },
             headerTitleStyle: { color: theme.colors.text },
-            headerTintColor: theme.colors.primary,
+            headerTintColor: theme.colors.text,
           }}
         >
           <Stack.Screen
