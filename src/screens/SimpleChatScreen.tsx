@@ -28,7 +28,7 @@ import { createThemedStyles, chatDarkTheme, chatLightTheme } from '../styles/com
 import { useTheme } from '../contexts/ThemeContext';
 import { MODELS } from '../utils/constants';
 import type { ContextParams } from '../utils/storage';
-import { loadContextParams, loadRoutstrFavorites, loadRoutstrModelsCache } from '../utils/storage';
+import { loadContextParams, loadRoutstrFavorites, loadRoutstrModelsCache, loadCustomModels } from '../utils/storage';
 import type { LLMMessage } from '../utils/llmMessages';
 import type { LLMProvider } from '../services/llm/LLMProvider';
 import { LocalLLMProvider } from '../services/llm/LocalLLMProvider';
@@ -36,6 +36,7 @@ import { RoutstrProvider } from '../services/llm/RoutstrProvider';
 import { loadRoutstrToken, saveRoutstrToken } from '../utils/storage';
 import { loadRoutstrBaseUrl } from '../utils/storage';
 import { fetchRoutstrWalletInfo } from '../services/RoutstrWalletService';
+import ContextParamsModal from '../components/ContextParamsModal';
 
 type Provider = 'local' | 'routstr'
 
@@ -66,6 +67,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
   const [initProgress, setInitProgress] = useState(0);
   const [selectedModelName, setSelectedModelName] = useState<string>('Select a model');
   const [selectedModelId, setSelectedModelId] = useState<string | undefined>();
+  const [selectedModelPath, setSelectedModelPath] = useState<string | null>(null);
   const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [provider, setProvider] = useState<Provider>('local');
   const [contextParams, setContextParams] = useState<ContextParams | null>(null);
@@ -80,6 +82,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
   const [balanceMsats, setBalanceMsats] = useState<number | null>(null);
   const [displayedBalanceMsats, setDisplayedBalanceMsats] = useState<number | null>(null);
   const balanceAnimFrameRef = useRef<number | null>(null);
+  const [showContextParamsModal, setShowContextParamsModal] = useState(false);
 
   useEffect(() => {
     const loadToken = async () => {
@@ -91,7 +94,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
 
 
 
-  useEffect(() => () => { void llm?.release(); }, [llm]);
+  useEffect(() => () => { llm?.release(); }, [llm]);
 
   const animateBalance = useCallback((from: number, to: number) => {
     if (balanceAnimFrameRef.current) {cancelAnimationFrame(balanceAnimFrameRef.current);}
@@ -164,7 +167,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
     }, []),
   );
 
-  // Track downloaded local models for dropdown filtering
+  // Track available local models for dropdown (downloaded defaults)
   useEffect(() => {
     let cancelled = false;
     const checkDownloads = async () => {
@@ -182,7 +185,29 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
           onSelect: () => {},
         } as UnifiedModelItemProps) : null;
       }));
-      if (!cancelled) {setDownloadedLocalModels(entries.filter((e): e is UnifiedModelItemProps => !!e));}
+      const defaults = entries.filter((e): e is UnifiedModelItemProps => !!e);
+
+      // Load custom models and include those available via localPath or downloaded filename
+      const custom = await loadCustomModels();
+      const customEntries = await Promise.all(custom.map(async (m) => {
+        const hasLocal = !!m.localPath;
+        const isDownloaded = m.filename ? await ModelDownloader.isModelDownloaded(m.filename) : false;
+        if (!(hasLocal || isDownloaded)) { return null; }
+        return ({
+          id: `custom:${m.id}`,
+          name: m.id,
+          type: 'local' as const,
+          repo: hasLocal ? 'Local' : m.repo,
+          filename: m.filename,
+          size: '',
+          mmproj: m.mmprojFilename,
+          localPath: m.localPath || undefined,
+          mmprojLocalPath: m.mmprojLocalPath || undefined,
+          onSelect: () => {},
+        } as UnifiedModelItemProps);
+      }));
+      const customs = customEntries.filter((e): e is UnifiedModelItemProps => !!e);
+      if (!cancelled) {setDownloadedLocalModels([...defaults, ...customs]);}
     };
     checkDownloads();
     const interval = setInterval(checkDownloads, 2000);
@@ -191,6 +216,31 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
 
   const handleSaveContextParams = (params: ContextParams) => {
     setContextParams(params);
+  };
+
+  const reinitializeLocalWithParams = async (params: ContextParams) => {
+    if (provider !== 'local') { return; }
+    try { await llm?.release(); } catch {}
+    if (selectedModelPath) {
+      messagesRef.current = [];
+      setMessagesVersion((prev) => prev + 1);
+      await initializeLocalModel(selectedModelPath, params);
+      return;
+    }
+    if (!selectedModelId) { return; }
+    const info = MODELS[selectedModelId as keyof typeof MODELS];
+    const filename = info?.filename;
+    if (!filename) { return; }
+    const isDownloaded = await ModelDownloader.isModelDownloaded(filename);
+    if (!isDownloaded) {
+      Alert.alert('Model Not Downloaded', `Please download ${selectedModelName} first from one of the other screens.`, [{ text: 'OK' }]);
+      return;
+    }
+    const modelPath = await ModelDownloader.getModelPath(filename);
+    if (!modelPath) { return; }
+    messagesRef.current = [];
+    setMessagesVersion((prev) => prev + 1);
+    await initializeLocalModel(modelPath, params);
   };
 
   const buildLLMMessages = (): LLMMessage[] => {
@@ -274,7 +324,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
             messagesRef.current = [];
             setMessagesVersion((prev) => prev + 1);
             addSystemMessage(
-              "Hello! I'm ready to chat with you. How can I help you today?",
+              'Hello! How can I help you today?',
             );
           },
         },
@@ -282,22 +332,23 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
     );
   }, [addSystemMessage]);
 
-  const initializeLocalModel = async (modelPath: string) => {
+  const initializeLocalModel = async (modelPath: string, overrideParams?: ContextParams) => {
     try {
       setIsInitLoading(true);
       setInitProgress(0);
 
-      const params = contextParams || (await loadContextParams());
+      const params = overrideParams || contextParams || (await loadContextParams());
       const provider = new LocalLLMProvider(modelPath.split('/').pop() || 'Local Model');
       await provider.initialize({ model: modelPath, params, onProgress: (p) => setInitProgress(p) });
       setLlm(provider);
       setIsModelReady(true);
       setInitProgress(100);
+      setSelectedModelPath(modelPath);
 
       // Add welcome message only if no messages exist
       if (messagesRef.current.length === 0) {
         addSystemMessage(
-          "Hello! I'm ready to chat with you. How can I help you today?",
+          'Hello! How can I help you today?',
         );
       }
     } catch (error: any) {
@@ -325,7 +376,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
       setIsModelReady(true);
 
       if (messagesRef.current.length === 0) {
-        addSystemMessage("Hello! I'm ready to chat with you. How can I help you today?");
+        addSystemMessage('Hello! How can I help you today?');
       }
       // Update balance when starting a Routstr session
       void refreshBalance(false);
@@ -344,21 +395,17 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
       setProvider('local');
       setSelectedModelName(model.name);
       setSelectedModelId(model.id);
-
-      // Check if model is downloaded
-      if (model.filename) {
-        const isDownloaded = await RNBlobUtil.fs.exists(RNBlobUtil.fs.dirs.DocumentDir + '/models/' + model.filename);
+      // Initialize from provided local path if available, else check downloaded by filename
+      const anyModel = model as any;
+      if (anyModel.localPath) {
+        await initializeLocalModel(anyModel.localPath as string);
+      } else if (model.filename) {
+        const isDownloaded = await ModelDownloader.isModelDownloaded(model.filename);
         if (isDownloaded) {
-          const modelPath = RNBlobUtil.fs.dirs.DocumentDir + '/models/' + model.filename;
-          if (modelPath) {
-            await initializeLocalModel(modelPath);
-          }
+          const modelPath = await ModelDownloader.getModelPath(model.filename);
+          if (modelPath) { await initializeLocalModel(modelPath); }
         } else {
-          Alert.alert(
-            'Model Not Downloaded',
-            `Please download ${model.name} first from one of the other screens.`,
-            [{ text: 'OK' }]
-          );
+          Alert.alert('Model Not Downloaded', `Please download ${model.name} first from one of the other screens.`, [{ text: 'OK' }]);
         }
       }
     }
@@ -399,6 +446,13 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
   ];
 
   useLayoutEffect(() => {
+    const headerName = (() => {
+      const name = selectedModelName || '';
+      // Prefer the portion after ':' if present, else use last path segment
+      const afterColon = name.includes(':') ? name.split(':')[1]?.trim() || name : name;
+      const base = afterColon.includes('/') ? afterColon.split('/').pop() || afterColon : afterColon;
+      return base.length > 16 ? `${base.slice(0, 16)}…` : base;
+    })();
     navigation.setOptions({
       headerTitleAlign: 'center',
       headerTitle: () => (
@@ -408,8 +462,17 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           style={{ flexDirection: 'row', alignItems: 'center' }}
         >
-          <Text style={{ fontSize: 17, fontWeight: '600', color: theme.colors.text }}>
-            {selectedModelName}
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={{
+              fontSize: 17,
+              fontWeight: '600',
+              color: theme.colors.text,
+              maxWidth: 220,
+            }}
+          >
+            {headerName || 'Select a model'}
           </Text>
           <Text style={{ marginLeft: 6, fontSize: 16, color: theme.colors.textSecondary }}>
             ▼
@@ -420,11 +483,15 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
         isModelReady ? <HeaderButton iconName="refresh" onPress={handleReset} /> : null
       ),
       headerRight: () => (
-        routstrToken && provider === 'routstr' ? (
+        provider === 'routstr' && routstrToken ? (
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Text style={{ marginRight: 8, fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary }}>
               {displayedBalanceMsats != null ? `${displayedBalanceMsats.toLocaleString()} msats` : '—'}
             </Text>
+          </View>
+        ) : provider === 'local' ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <HeaderButton iconName="cog-outline" onPress={() => setShowContextParamsModal(true)} />
           </View>
         ) : null
       ),
@@ -472,10 +539,14 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
       if (llm) {
         const { content, metadata } = await llm.sendChat(conversationMessages, (delta) => {
           updateMessage(responseId, (msg) => {
-            if (msg.type === 'text') {
-              return { ...msg, text: delta.replace(/^\s+/, '') };
-            }
-            return msg;
+            if (msg.type !== 'text') { return msg; }
+            const nextMeta: any = { ...msg.metadata };
+            const partial: any = { ...(nextMeta.partialCompletionResult || {}) };
+            if (typeof delta.reasoning_content === 'string') { partial.reasoning_content = delta.reasoning_content; }
+            if (Array.isArray(delta.tool_calls)) { partial.tool_calls = delta.tool_calls; }
+            if (typeof delta.content === 'string') { partial.content = delta.content.replace(/^\s+/, ''); }
+            nextMeta.partialCompletionResult = partial;
+            return { ...msg, text: typeof delta.content === 'string' ? delta.content.replace(/^\s+/, '') : msg.text, metadata: nextMeta };
           });
         });
         updateMessage(responseId, (msg) => ({
@@ -586,6 +657,15 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
           </View>
         </View>
       </Modal>
+      <ContextParamsModal
+        visible={showContextParamsModal}
+        onClose={() => setShowContextParamsModal(false)}
+        onSave={async (params) => {
+          handleSaveContextParams(params);
+          await reinitializeLocalWithParams(params);
+          setShowContextParamsModal(false);
+        }}
+      />
     </View>
   );
 }

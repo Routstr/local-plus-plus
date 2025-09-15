@@ -11,6 +11,7 @@ import {
 import BackgroundModelDownloadService from '../services/BackgroundModelDownloadService';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import { useTheme } from '../contexts/ThemeContext';
+import type { CustomModel } from '../utils/storage';
 
 // Common interfaces and types
 interface ModelFile {
@@ -30,6 +31,8 @@ interface BaseModelDownloadCardProps {
   initializeButtonText?: string
   isLocalFile?: boolean
   hideInitializeButton?: boolean
+  hideDeleteButton?: boolean
+  onDelete?: () => Promise<void> | void
 }
 
 interface ModelDownloadCardProps {
@@ -42,6 +45,8 @@ interface ModelDownloadCardProps {
   initializeButtonText?: string
   isLocalFile?: boolean
   hideInitializeButton?: boolean
+  hideDeleteButton?: boolean
+  onDelete?: () => Promise<void> | void
 }
 
 interface TTSModelDownloadCardProps {
@@ -57,6 +62,9 @@ interface TTSModelDownloadCardProps {
   onInitialize: (ttsPath: string, vocoderPath: string) => void
   onDownloaded?: (ttsPath: string, vocoderPath: string) => void
   initializeButtonText?: string
+  hideInitializeButton?: boolean
+  hideDeleteButton?: boolean
+  onDelete?: () => Promise<void> | void
 }
 
 interface MtmdModelDownloadCardProps {
@@ -69,21 +77,24 @@ interface MtmdModelDownloadCardProps {
   onDownloaded?: (modelPath: string, mmprojPath: string) => void
   initializeButtonText?: string
   isLocalFile?: boolean
+  hideInitializeButton?: boolean
+  hideDeleteButton?: boolean
+  onDelete?: () => Promise<void> | void
 }
 
 // Create themed styles function
 const createStyles = (theme: any) => StyleSheet.create({
   card: {
     backgroundColor: theme.colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginVertical: 8,
-    marginHorizontal: 16,
+    borderRadius: 8,
+    padding: 12,
+    marginVertical: 6,
+    marginHorizontal: 12,
     shadowColor: theme.colors.shadow,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 1,
   },
   header: {
     marginBottom: 8,
@@ -98,26 +109,26 @@ const createStyles = (theme: any) => StyleSheet.create({
     alignItems: 'flex-start',
   },
   title: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: theme.colors.text,
     flexShrink: 1,
   },
   size: {
-    fontSize: 14,
+    fontSize: 13,
     color: theme.colors.textSecondary,
     fontWeight: '500',
   },
   sizeColumn: {
-    fontSize: 14,
+    fontSize: 13,
     color: theme.colors.textSecondary,
     fontWeight: '500',
     marginTop: 4,
   },
   description: {
-    fontSize: 14,
+    fontSize: 13,
     color: theme.colors.textSecondary,
-    marginBottom: 16,
+    marginBottom: 10,
     lineHeight: 20,
   },
   progressContainer: {
@@ -146,14 +157,14 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   downloadButton: {
     backgroundColor: theme.colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 6,
     flex: 1,
   },
   downloadButtonText: {
     color: theme.colors.white,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     textAlign: 'center',
   },
@@ -184,31 +195,31 @@ const createStyles = (theme: any) => StyleSheet.create({
     marginRight: 8,
   },
   downloadedText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#4CAF50',
     fontWeight: '500',
   },
   deleteButton: {
     backgroundColor: theme.colors.error,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 6,
   },
   deleteButtonText: {
     color: theme.colors.white,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
   },
   initializeButton: {
     backgroundColor: theme.colors.primary,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 6,
     marginLeft: 8,
   },
   initializeButtonText: {
     color: theme.colors.white,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
   },
   actionButtonsContainer: {
@@ -217,7 +228,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   selectedLabel: {
     marginLeft: 8,
-    fontSize: 14,
+    fontSize: 13,
     color: theme.colors.textSecondary,
     fontWeight: '500',
   },
@@ -243,6 +254,8 @@ function BaseModelDownloadCard({
   initializeButtonText = 'Initialize',
   isLocalFile = false,
   hideInitializeButton = false,
+  hideDeleteButton = false,
+  onDelete,
 }: BaseModelDownloadCardProps) {
   const { theme } = useTheme();
   const styles = createStyles(theme);
@@ -376,6 +389,15 @@ function BaseModelDownloadCard({
   };
 
   const handleDelete = async () => {
+    if (onDelete) {
+      try {
+        await onDelete();
+      } finally {
+        setIsDownloaded(false);
+        setFilePaths([]);
+      }
+      return;
+    }
     const modelText = files.length > 1 ? 'Models' : 'Model';
     Alert.alert(
       `Delete ${modelText}`,
@@ -495,12 +517,14 @@ function BaseModelDownloadCard({
         {isDownloaded && !isDownloading && (
           <View style={styles.downloadedContainer}>
             <View style={styles.actionButtonsContainer}>
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={handleDelete}
-              >
-                <Text style={styles.deleteButtonText}>Delete</Text>
-              </TouchableOpacity>
+              {!hideDeleteButton && (
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={handleDelete}
+                >
+                  <Text style={styles.deleteButtonText}>Delete</Text>
+                </TouchableOpacity>
+              )}
               {!hideInitializeButton && (
                 <TouchableOpacity
                   style={styles.initializeButton}
@@ -510,9 +534,6 @@ function BaseModelDownloadCard({
                     {initializeButtonText}
                   </Text>
                 </TouchableOpacity>
-              )}
-              {hideInitializeButton && (
-                <Text style={styles.selectedLabel}>(selected)</Text>
               )}
             </View>
           </View>
@@ -560,6 +581,7 @@ export function TTSModelDownloadCard({
   onInitialize,
   onDownloaded,
   initializeButtonText,
+  hideInitializeButton,
 }: TTSModelDownloadCardProps) {
   const files: ModelFile[] = [
     { repo, filename, label: 'TTS model' },
@@ -575,6 +597,7 @@ export function TTSModelDownloadCard({
       onDownloaded={onDownloaded}
       downloadButtonText="Download Both Models"
       initializeButtonText={initializeButtonText}
+      hideInitializeButton={hideInitializeButton}
     />
   );
 }
@@ -590,6 +613,7 @@ export function MtmdModelDownloadCard({
   onDownloaded,
   initializeButtonText,
   isLocalFile = false,
+  hideInitializeButton,
 }: MtmdModelDownloadCardProps) {
   const files: ModelFile[] = [
     { repo, filename, label: 'Model' },
@@ -606,8 +630,108 @@ export function MtmdModelDownloadCard({
       downloadButtonText="Download Model & MMProj"
       initializeButtonText={initializeButtonText}
       isLocalFile={isLocalFile}
+      hideInitializeButton={hideInitializeButton}
     />
   );
 }
 
 export default ModelDownloadCard;
+
+// Unified LocalModelCard (merged into this file to avoid duplication)
+export function LocalModelCard(
+  props:
+    | {
+        kind: 'default'
+        title: string
+        repo: string
+        filename: string
+        size: string
+        onInitialize?: (modelPath: string) => void
+        initializeButtonText?: string
+        hideInitializeButton?: boolean
+        hideDeleteButton?: boolean
+        onDelete?: () => Promise<void> | void
+      }
+    | {
+        kind: 'custom'
+        model: CustomModel
+        onInitialize: (modelPath: string, mmprojPath?: string) => void
+        onDownloaded?: (...paths: string[]) => void
+        initializeButtonText?: string
+        hideInitializeButton?: boolean
+        hideDeleteButton?: boolean
+        onDelete?: () => Promise<void> | void
+      },
+) {
+  if (props.kind === 'default') {
+    const {
+      title,
+      repo,
+      filename,
+      size,
+      onInitialize,
+      initializeButtonText,
+      hideInitializeButton,
+      hideDeleteButton,
+      onDelete,
+    } = props;
+
+    return (
+      <ModelDownloadCard
+        title={title}
+        repo={repo}
+        filename={filename}
+        size={size}
+        onInitialize={onInitialize}
+        initializeButtonText={initializeButtonText}
+        hideInitializeButton={hideInitializeButton}
+        hideDeleteButton={hideDeleteButton}
+        onDelete={onDelete}
+      />
+    );
+  }
+
+  const {
+    model,
+    onInitialize,
+    onDownloaded,
+    initializeButtonText,
+    hideInitializeButton,
+    hideDeleteButton,
+    onDelete,
+  } = props;
+
+  if (model.mmprojFilename) {
+    return (
+      <MtmdModelDownloadCard
+        title={`${model.id} (${model.quantization})`}
+        repo={model.repo}
+        filename={model.filename}
+        mmproj={model.mmprojFilename}
+        size={model.localPath || model.mmprojLocalPath ? 'Local files ready' : 'Size unknown'}
+        initializeButtonText={initializeButtonText}
+        hideInitializeButton={hideInitializeButton}
+        hideDeleteButton={hideDeleteButton}
+        onDelete={onDelete}
+        onInitialize={(modelPath: string, mmprojPath: string) => onInitialize(modelPath, mmprojPath)}
+        onDownloaded={() => onDownloaded?.()}
+      />
+    );
+  }
+
+  return (
+    <ModelDownloadCard
+      title={`${model.id} (${model.quantization})`}
+      repo={model.localPath ? 'Local' : model.repo}
+      filename={model.filename}
+      size={model.localPath ? 'Local file ready' : 'Size unknown'}
+      initializeButtonText={initializeButtonText}
+      isLocalFile={!!model.localPath}
+      hideInitializeButton={hideInitializeButton}
+      hideDeleteButton={hideDeleteButton}
+      onDelete={onDelete}
+      onInitialize={(modelPath: string) => onInitialize(modelPath)}
+      onDownloaded={() => onDownloaded?.()}
+    />
+  );
+}

@@ -23,6 +23,8 @@ export interface UnifiedModelItemProps {
   filename?: string
   size?: string
   mmproj?: string
+  localPath?: string
+  mmprojLocalPath?: string
   // For routstr models
   apiId?: string
   description?: string
@@ -32,13 +34,15 @@ export interface UnifiedModelItemProps {
 const createStyles = (theme: any) => StyleSheet.create({
   container: {
     backgroundColor: theme.colors.surface,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
   selectedContainer: {
-    backgroundColor: theme.colors.primaryLight,
+    backgroundColor: theme.colors.card,
+    borderWidth: 1,
+    borderColor: theme.colors.text,
   },
   row: {
     flexDirection: 'row',
@@ -50,12 +54,12 @@ const createStyles = (theme: any) => StyleSheet.create({
     marginRight: 12,
   },
   name: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: theme.colors.text,
   },
   details: {
-    fontSize: 13,
+    fontSize: 12,
     color: theme.colors.textSecondary,
     marginTop: 2,
   },
@@ -64,7 +68,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     alignItems: 'center',
   },
   sizeText: {
-    fontSize: 12,
+    fontSize: 11,
     color: theme.colors.textSecondary,
     marginRight: 8,
   },
@@ -81,12 +85,12 @@ const createStyles = (theme: any) => StyleSheet.create({
     backgroundColor: theme.colors.border,
   },
   selectedText: {
-    fontSize: 12,
+    fontSize: 11,
     color: theme.colors.primary,
     fontWeight: '500',
   },
   apiText: {
-    fontSize: 11,
+    fontSize: 10,
     color: theme.colors.textSecondary,
     fontStyle: 'italic',
   },
@@ -101,8 +105,10 @@ export default function UnifiedModelItem({
   filename,
   size,
   mmproj,
-  apiId,
-  description,
+  localPath,
+  mmprojLocalPath,
+  apiId: _apiId,
+  description: _description,
   completionSatPerToken,
 }: UnifiedModelItemProps) {
   const { theme } = useTheme();
@@ -110,27 +116,19 @@ export default function UnifiedModelItem({
   const [isDownloaded, setIsDownloaded] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
 
-
-
-  useEffect(() => {
-    if (type === 'local' && filename) {
-      checkDownloadStatus();
-    }
-    // Also re-check when mmproj changes since it's part of completion state
-  }, [filename, type, mmproj]);
-
-  const checkDownloadStatus = async () => {
-    if (!filename) {return;}
-
+  const checkDownloadStatus = React.useCallback(async () => {
     try {
       setIsChecking(true);
-      const base = RNBlobUtil.fs.dirs.DocumentDir + '/models';
-      const mainModelDownloaded = await RNBlobUtil.fs.exists(`${base}/${filename}`);
+      const mainModelDownloaded = localPath
+        ? true
+        : (filename ? await ModelDownloader.isModelDownloaded(filename) : false);
       let allDownloaded = mainModelDownloaded;
 
       if (mmproj) {
-        const mmprojDownloaded = await RNBlobUtil.fs.exists(`${base}/${mmproj}`);
-        allDownloaded = mainModelDownloaded && mmprojDownloaded;
+        const mmprojDownloaded = mmprojLocalPath
+          ? true
+          : await ModelDownloader.isModelDownloaded(mmproj);
+        allDownloaded = allDownloaded && mmprojDownloaded;
       }
 
       setIsDownloaded(allDownloaded);
@@ -139,7 +137,41 @@ export default function UnifiedModelItem({
     } finally {
       setIsChecking(false);
     }
-  };
+  }, [filename, mmproj, localPath, mmprojLocalPath]);
+  useEffect(() => {
+    if (type === 'local' && (filename || localPath)) {
+      checkDownloadStatus();
+    }
+  }, [filename, localPath, type, checkDownloadStatus]);
+  const checkDownloadStatus = React.useCallback(async () => {
+    try {
+      setIsChecking(true);
+      const mainModelDownloaded = localPath
+        ? true
+        : (filename ? await ModelDownloader.isModelDownloaded(filename) : false);
+      let allDownloaded = mainModelDownloaded;
+
+      if (mmproj) {
+        const mmprojDownloaded = mmprojLocalPath
+          ? true
+          : await ModelDownloader.isModelDownloaded(mmproj);
+        allDownloaded = allDownloaded && mmprojDownloaded;
+      }
+
+      setIsDownloaded(allDownloaded);
+    } catch (error) {
+      console.error('Error checking download status:', error);
+    } finally {
+      setIsChecking(false);
+    }
+  }, [filename, mmproj, localPath, mmprojLocalPath]);
+  useEffect(() => {
+    if (type === 'local' && (filename || localPath)) {
+      checkDownloadStatus();
+    }
+  }, [filename, localPath, type, checkDownloadStatus]);
+
+
 
   const getDetails = () => {
     if (type === 'routstr') {return '';}

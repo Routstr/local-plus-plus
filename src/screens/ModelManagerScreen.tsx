@@ -6,11 +6,12 @@ import { MODELS } from '../utils/constants';
 import ModelDownloadCard from '../components/ModelDownloadCard';
 import BackgroundModelDownloadService from '../services/BackgroundModelDownloadService';
 import CustomModelModal from '../components/CustomModelModal';
-import CustomModelCard from '../components/CustomModelCard';
+import { LocalModelCard } from '../components/ModelDownloadCard';
 import type { CustomModel } from '../utils/storage';
 import { loadCustomModels, loadRoutstrFavorites, saveRoutstrFavorites, loadRoutstrModelsCache } from '../utils/storage';
 import { formatSatsCompact } from '../utils/pricing';
 import { refreshAndCacheRoutstrModels } from '../services/RoutstrModelsService';
+import RoutstrFilterModal, { type RoutstrFilter } from '../components/RoutstrFilterModal';
 
 export default function ModelManagerScreen({ navigation }: { navigation: any }) {
   const { theme } = useTheme();
@@ -22,6 +23,8 @@ export default function ModelManagerScreen({ navigation }: { navigation: any }) 
   const [routstrModels, setRoutstrModels] = useState<Array<{ id: string; name: string; maxCost: number; completionSatPerToken?: number }>>([]);
   const [isLoadingRoutstr, setIsLoadingRoutstr] = useState(false);
   const [routstrError, setRoutstrError] = useState<string | null>(null);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [filter, setFilter] = useState<RoutstrFilter>({});
   const [activeGroups, setActiveGroups] = useState<Array<{ id: string; title: string; percentage: number }>>([]);
   // debug removed
 
@@ -91,7 +94,7 @@ export default function ModelManagerScreen({ navigation }: { navigation: any }) 
     let mounted = true;
     // synchronous attempt: use in-memory cache immediately
     loadRoutstrModelsCache().then((cached) => {
-      if (mounted) {setRoutstrModels(cached);}
+      if (mounted) {setRoutstrModels(cached);} 
     });
     return () => { mounted = false; };
   }, [mode]);
@@ -109,14 +112,57 @@ export default function ModelManagerScreen({ navigation }: { navigation: any }) 
     [routstrModels, favorites],
   );
 
+  const extractProvider = (id: string, name: string): string => {
+    const base = (id || name || '').toLowerCase();
+    const idxSlash = base.indexOf('/');
+    const idxColon = base.indexOf(':');
+    const idxDot = base.indexOf('.');
+    const candidates = [idxSlash, idxColon, idxDot].filter((i) => i > 0);
+    if (candidates.length > 0) {return base.slice(0, Math.min(...candidates));}
+    const dashIdx = base.indexOf('-');
+    return dashIdx > 0 ? base.slice(0, dashIdx) : base;
+  };
+
+  const providerOptions = useMemo(() => {
+    const set = new Set<string>();
+    routstrModels.forEach((m) => set.add(extractProvider(m.id, m.name)));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [routstrModels]);
+
+  const isFilterActive = useMemo(() => {
+    return !!(filter.searchTerm || filter.provider || typeof filter.maxSatPerToken === 'number');
+  }, [filter]);
+
+  const filteredOtherRoutstrModels = useMemo(() => {
+    const term = (filter.searchTerm || '').toLowerCase();
+    const provider = (filter.provider || '').toLowerCase();
+    const maxPrice = filter.maxSatPerToken;
+    return otherRoutstrModels.filter((m) => {
+      if (term) {
+        const hay = `${m.name} ${m.id}`.toLowerCase();
+        if (!hay.includes(term)) {return false;}
+      }
+      if (provider) {
+        if (extractProvider(m.id, m.name) !== provider) {return false;}
+      }
+      if (typeof maxPrice === 'number' && isFinite(maxPrice)) {
+        if (!(typeof m.completionSatPerToken === 'number' && isFinite(m.completionSatPerToken))) {return false;}
+        if (m.completionSatPerToken > maxPrice) {return false;}
+      }
+      return true;
+    });
+  }, [filter, otherRoutstrModels]);
+
+  const clearFilter = () => setFilter({});
+
   return (
     <View style={themedStyles.container}>
       <View style={{ flexDirection: 'row', margin: 16, backgroundColor: theme.colors.surface, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border }}>
-        <TouchableOpacity onPress={() => setMode('local')} style={{ flex: 1, paddingVertical: 10, alignItems: 'center', backgroundColor: mode === 'local' ? theme.colors.primary : 'transparent', borderTopLeftRadius: 10, borderBottomLeftRadius: 10 }}>
-          <Text style={{ color: mode === 'local' ? theme.colors.white : theme.colors.text, fontWeight: '600' }}>Local</Text>
+        <TouchableOpacity onPress={() => setMode('local')} style={{ flex: 1, paddingVertical: 12, alignItems: 'center', backgroundColor: mode === 'local' ? theme.colors.buttonBackground : theme.colors.surface, borderTopLeftRadius: 10, borderBottomLeftRadius: 10, borderRightWidth: 1, borderRightColor: theme.colors.border }}>
+          <Text style={{ color: mode === 'local' ? theme.colors.white : theme.colors.text, fontWeight: '700', letterSpacing: 0.2 }}>Local</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setMode('routstr')} style={{ flex: 1, paddingVertical: 10, alignItems: 'center', backgroundColor: mode === 'routstr' ? theme.colors.primary : 'transparent', borderTopRightRadius: 10, borderBottomRightRadius: 10 }}>
-          <Text style={{ color: mode === 'routstr' ? theme.colors.white : theme.colors.text, fontWeight: '600' }}>Routstr</Text>
+        <TouchableOpacity onPress={() => setMode('routstr')} style={{ flex: 1, paddingVertical: 12, alignItems: 'center', backgroundColor: mode === 'routstr' ? theme.colors.buttonBackground : theme.colors.surface, borderTopRightRadius: 10, borderBottomRightRadius: 10 }}>
+          <Text style={{ color: mode === 'routstr' ? theme.colors.white : theme.colors.text, fontWeight: '700', letterSpacing: 0.2 }}>Routstr</Text>
         </TouchableOpacity>
       </View>
 
@@ -135,17 +181,27 @@ export default function ModelManagerScreen({ navigation }: { navigation: any }) 
               ))}
             </View>
           )}
-          {defaultLocalModels.map(({ key, info }) => (
+          {[...customModels.map((m) => (
+            <LocalModelCard
+              key={`custom-${m.id}`}
+              kind="custom"
+              model={m}
+              onInitialize={() => {}}
+              onDownloaded={async () => setCustomModels(await loadCustomModels())}
+              onDelete={async () => setCustomModels(await loadCustomModels())}
+              hideInitializeButton
+            />
+          )),
+          ...defaultLocalModels.map(({ key, info }) => (
             <ModelDownloadCard
-              key={key}
+              key={`default-${key}`}
               title={info.name}
               repo={info.repo}
               filename={info.filename}
               size={info.size}
-              onInitialize={() => {}}
-              initializeButtonText="Downloaded"
+              hideInitializeButton
             />
-          ))}
+          ))]}
 
           <TouchableOpacity
             style={themedStyles.addCustomModelButton}
@@ -153,16 +209,6 @@ export default function ModelManagerScreen({ navigation }: { navigation: any }) 
           >
             <Text style={themedStyles.addCustomModelButtonText}>+ Add Custom Model</Text>
           </TouchableOpacity>
-
-          {customModels.map((m) => (
-            <CustomModelCard
-              key={m.id}
-              model={m}
-              onInitialize={() => {}}
-              onModelRemoved={async () => setCustomModels(await loadCustomModels())}
-              initializeButtonText="Installed"
-            />
-          ))}
         </ScrollView>
       ) : (
         <View style={{ flex: 1 }}>
@@ -171,7 +217,7 @@ export default function ModelManagerScreen({ navigation }: { navigation: any }) 
               ...(favoriteRoutstrModels.length > 0
                 ? [{ title: 'Added Models', kind: 'fav', data: favoriteRoutstrModels } as any]
                 : []),
-              { title: 'All Models', kind: 'all', data: otherRoutstrModels } as any,
+              { title: 'All Models', kind: 'all', data: filteredOtherRoutstrModels } as any,
             ]}
             keyExtractor={(item) => item.id}
             renderItem={({ item, section }) => (
@@ -208,7 +254,7 @@ export default function ModelManagerScreen({ navigation }: { navigation: any }) 
             )}
             renderSectionHeader={() => null}
             renderSectionFooter={({ section }) => (
-              section.kind === 'fav' && otherRoutstrModels.length > 0 ? (
+              section.kind === 'fav' && filteredOtherRoutstrModels.length > 0 ? (
                 <View style={{ height: 1, backgroundColor: theme.colors.border, marginHorizontal: 16, marginVertical: 8 }} />
               ) : null
             )}
@@ -216,6 +262,17 @@ export default function ModelManagerScreen({ navigation }: { navigation: any }) 
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 }}>
                 <Text style={themedStyles.modelSectionTitle}>Models</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {isFilterActive && (
+                    <Text style={{ color: theme.colors.textSecondary, marginRight: 8 }}>Filtered</Text>
+                  )}
+                  {isFilterActive && (
+                    <TouchableOpacity onPress={clearFilter} style={{ paddingHorizontal: 8, paddingVertical: 6, marginRight: 4 }}>
+                      <Text style={{ color: theme.colors.error, fontWeight: '600' }}>Clear</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity onPress={() => setShowFilterModal(true)} style={{ paddingHorizontal: 8, paddingVertical: 6, marginRight: 4 }}>
+                    <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>Filter</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity onPress={() => navigation.navigate('RoutstrSettings')} style={{ paddingHorizontal: 8, paddingVertical: 6, marginRight: 4 }}>
                     <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>Configure</Text>
                   </TouchableOpacity>
@@ -254,6 +311,15 @@ export default function ModelManagerScreen({ navigation }: { navigation: any }) 
         onModelAdded={async () => setCustomModels(await loadCustomModels())}
         title="Add Custom Model"
         enableFileSelection
+      />
+
+      <RoutstrFilterModal
+        visible={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        onSave={(f) => setFilter(f)}
+        onClear={() => { clearFilter(); setShowFilterModal(false); }}
+        initialFilter={filter}
+        providers={providerOptions}
       />
     </View>
   );

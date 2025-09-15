@@ -56,9 +56,9 @@ export function ParameterMenu({
             justifyContent: 'space-between',
             borderWidth: 1,
             borderColor: theme.colors.border,
-            borderRadius: 8,
-            paddingHorizontal: 12,
-            paddingVertical: 16,
+            borderRadius: 10,
+            paddingHorizontal: 14,
+            paddingVertical: 14,
             backgroundColor: theme.colors.inputBackground,
           }}
         >

@@ -1,6 +1,7 @@
 // Legacy downloader kept for small/foreground downloads.
 import RNBlobUtil from 'react-native-blob-util';
 import { getModelDownloadUrl } from '../utils/constants';
+import { loadHfToken } from '../utils/storage';
 
 export interface DownloadProgress {
   written: number
@@ -47,7 +48,7 @@ export class ModelDownloader {
     const splitInfo = this.detectSplitFile(filename);
     if (!splitInfo) {return [filename];}
 
-    const filenames = [];
+    const filenames: string[] = [];
     const { baseName, totalParts } = splitInfo;
     const paddingLength = Math.max(5, totalParts.toString().length); // Ensure at least 5 digits
 
@@ -111,6 +112,7 @@ export class ModelDownloader {
       // First, get the total size of all split files by fetching headers
       let totalExpectedSize = 0;
       const fileSizes: number[] = [];
+      const token = await loadHfToken();
 
 
       for (let i = 0; i < filenames.length; i += 1) {
@@ -130,9 +132,9 @@ export class ModelDownloader {
           try {
             const url = getModelDownloadUrl(repo, filename);
 
-            const rangeResponse = await RNBlobUtil.fetch('GET', url, {
-              'Range': 'bytes=0-0',
-            });
+            const rangeHeaders: Record<string, string> = { 'Range': 'bytes=0-0' };
+            if (token) { rangeHeaders.Authorization = `Bearer ${token}`; }
+            const rangeResponse = await RNBlobUtil.fetch('GET', url, rangeHeaders);
             const contentRange = rangeResponse.info().headers['content-range'] || rangeResponse.info().headers['Content-Range'];
             if (contentRange) {
               // Extract total size from Content-Range: bytes 0-0/1234567
@@ -186,9 +188,8 @@ export class ModelDownloader {
           fileCache: true,
         });
 
-
         const response = await config
-          .fetch('GET', url)
+          .fetch('GET', url, token ? { Authorization: `Bearer ${token}` } : {})
           .progress((written, total) => {
             if (onProgress && Number(total) > 0) {
               // Update file size if we didn't get it from HEAD request
@@ -271,6 +272,7 @@ export class ModelDownloader {
       const url = getModelDownloadUrl(repo, filename);
       const downloadDir = `${RNBlobUtil.fs.dirs.DocumentDir}/models`;
       const filePath = `${downloadDir}/${filename}`;
+      const token = await loadHfToken();
 
       // Create models directory if it doesn't exist
       if (!(await RNBlobUtil.fs.exists(downloadDir))) {
@@ -291,7 +293,7 @@ export class ModelDownloader {
       });
 
       const response = await config
-        .fetch('GET', url)
+        .fetch('GET', url, token ? { Authorization: `Bearer ${token}` } : {})
         .progress((written, total) => {
           if (onProgress && Number(total) > 0) {
             onProgress({
@@ -401,14 +403,15 @@ export class ModelDownloader {
     try {
       const splitFilenames = this.generateSplitFilenames(filename);
       let totalSize = 0;
+      const token = await loadHfToken();
 
       // Use Promise.all to avoid no-await-in-loop and for-of issues
       const sizePromises = splitFilenames.map(async splitFilename => {
         const url = getModelDownloadUrl(repo, splitFilename);
         try {
-          const rangeResponse = await RNBlobUtil.fetch('GET', url, {
-            'Range': 'bytes=0-0',
-          });
+          const headers: Record<string, string> = { 'Range': 'bytes=0-0' };
+          if (token) { headers.Authorization = `Bearer ${token}`; }
+          const rangeResponse = await RNBlobUtil.fetch('GET', url, headers);
           const contentRange = rangeResponse.info().headers['content-range'] || rangeResponse.info().headers['Content-Range'];
           if (contentRange) {
             // Extract total size from Content-Range: bytes 0-0/1234567

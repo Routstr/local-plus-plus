@@ -18,11 +18,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Chat } from '@flyerhq/react-native-chat-ui';
 import type { MessageType } from '@flyerhq/react-native-chat-ui';
-import ModelDownloadCard from '../components/ModelDownloadCard';
+import { LocalModelCard } from '../components/ModelDownloadCard';
 import ContextParamsModal from '../components/ContextParamsModal';
 import CompletionParamsModal from '../components/CompletionParamsModal';
 import CustomModelModal from '../components/CustomModelModal';
-import CustomModelCard from '../components/CustomModelCard';
+// LocalModelCard already imported above
 import { Bubble } from '../components/Bubble';
 import { HeaderButton } from '../components/HeaderButton';
 import { Menu } from '../components/Menu';
@@ -773,15 +773,13 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
             <>
               <Text style={themedStyles.modelSectionTitle}>Custom Models</Text>
               {customModels
-                .filter((model) => !model.mmprojFilename) // Only show non-multimodal models
+                .filter((model) => !model.mmprojFilename)
                 .map((model) => (
-                  <CustomModelCard
+                  <LocalModelCard
                     key={model.id}
+                    kind="custom"
                     model={model}
-                    onInitialize={(modelPath: string) =>
-                      initializeModel(modelPath)
-                    }
-                    onModelRemoved={handleCustomModelRemoved}
+                    onInitialize={(modelPath: string) => initializeModel(modelPath)}
                     initializeButtonText="Initialize"
                   />
                 ))}
@@ -809,8 +807,9 @@ export default function ToolCallsScreen({ navigation }: { navigation: any }) {
           ].map((model) => {
             const modelInfo = MODELS[model as keyof typeof MODELS];
             return (
-              <ModelDownloadCard
+              <LocalModelCard
                 key={model}
+                kind="default"
                 title={modelInfo.name}
                 repo={modelInfo.repo}
                 filename={modelInfo.filename}
