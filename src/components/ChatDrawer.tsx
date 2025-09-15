@@ -190,7 +190,7 @@ export default function ChatDrawer() {
         </View>
       </Modal>
     </View>
-  ), [confirmDelete, handleCreate, renameInput, renameTarget, renderItem, sessions, theme.colors]);
+  ), [confirmDelete, handleCreate, renameInput, renameTarget, renderItem, sessions, theme.colors, refresh]);
 
   return content;
 }
