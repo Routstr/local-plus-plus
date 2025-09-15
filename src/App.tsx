@@ -8,7 +8,7 @@ import { enableScreens } from 'react-native-screens';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { toggleNativeLog, addNativeLogListener } from 'llama.rn';
+import { toggleNativeLog, addNativeLogListener, setContextLimit, releaseAllLlama } from 'llama.rn';
 import SimpleChatScreen from './screens/SimpleChatScreen';
 import ModelManagerScreen from './screens/ModelManagerScreen';
 import RoutstrSettingsScreen from './screens/RoutstrSettingsScreen';
@@ -24,15 +24,19 @@ import ChatDrawer from './components/ChatDrawer';
 import { refreshAndCacheRoutstrModels } from './services/RoutstrModelsService';
 // import { Menu } from './components/Menu'
 
-// Example: Catch logs from llama.cpp
-toggleNativeLog(true);
-addNativeLogListener((level, text) => {
-
-  let log = (t: string) => t; // noop
-  // Uncomment to test:
-  // ;({log} = console)
-  log(['[localplusplus]', level ? `[${level}]` : '', text].filter(Boolean).join(' '));
-});
+// Example: Catch logs from llama.cpp (dev only to avoid perf overhead)
+if (__DEV__) {
+  toggleNativeLog(true);
+  addNativeLogListener((level, text) => {
+    let log = (t: string) => t; // noop
+    // Uncomment to test:
+    // ;({ log } = console)
+    log(['[localplusplus]', level ? `[${level}]` : '', text].filter(Boolean).join(' '));
+  });
+} else {
+  // Ensure native logging is disabled in production
+  toggleNativeLog(false);
+}
 
 enableScreens();
 
@@ -60,6 +64,14 @@ const Drawer = createDrawerNavigator();
 function AppContent() {
   const { theme } = useTheme();
   const navigationTheme = theme.dark ? DarkTheme : DefaultTheme;
+  React.useEffect(() => {
+    // Hard-cap contexts to one at a time to prevent double loads on iOS
+    setContextLimit(1);
+    return () => {
+      // Best-effort cleanup of any lingering contexts on app teardown
+      releaseAllLlama();
+    };
+  }, []);
   React.useEffect(() => {
     // Fetch Routstr models once at app startup and cache, without blocking first render
     const schedule = InteractionManager.runAfterInteractions(() => {

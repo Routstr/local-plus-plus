@@ -24,7 +24,7 @@ import { MtmdModelDownloadCard } from '../components/ModelDownloadCard';
 import ContextParamsModal from '../components/ContextParamsModal';
 import CompletionParamsModal from '../components/CompletionParamsModal';
 import CustomModelModal from '../components/CustomModelModal';
-import CustomModelCard from '../components/CustomModelCard';
+import { LocalModelCard } from '../components/ModelDownloadCard';
 import { Bubble } from '../components/Bubble';
 import { HeaderButton } from '../components/HeaderButton';
 import { Menu } from '../components/Menu';
@@ -63,7 +63,7 @@ const createSystemPrompt = (
     return DEFAULT_SYSTEM_PROMPT;
   }
 
-  const capabilities = [];
+  const capabilities: string[] = [];
   if (multimodalSupport.vision) {capabilities.push('vision');}
   if (multimodalSupport.audio) {capabilities.push('audio');}
 
@@ -78,7 +78,7 @@ const createSystemPrompt = (
         }`
       : capabilities[0];
 
-  const mediaTypes = [];
+  const mediaTypes: string[] = [];
   if (multimodalSupport.vision) {mediaTypes.push('images');}
   if (multimodalSupport.audio) {mediaTypes.push('audio');}
 
@@ -88,7 +88,7 @@ const createSystemPrompt = (
           mediaTypes[mediaTypes.length - 1]
         }`
       : mediaTypes[0];
-  let analysisText;
+  let analysisText: string;
   if (multimodalSupport.vision && multimodalSupport.audio) {
     analysisText = 'see and analyze images and listen to and analyze audio';
   } else if (multimodalSupport.vision) {
@@ -107,7 +107,7 @@ const createWelcomeMessage = (
     return "Hello! I'm an AI assistant ready to help with text conversations. How can I help you today?";
   }
 
-  const capabilities = [];
+  const capabilities: string[] = [];
   if (multimodalSupport.vision) {capabilities.push('images');}
   if (multimodalSupport.audio) {capabilities.push('audio files');}
 
@@ -115,14 +115,14 @@ const createWelcomeMessage = (
     return "Hello! I'm an AI assistant ready to help with text conversations. How can I help you today?";
   }
 
-  const capabilityText =
+  const capabilityText: string =
     capabilities.length > 1
       ? `${capabilities.slice(0, -1).join(', ')} and ${
           capabilities[capabilities.length - 1]
         }`
       : capabilities[0];
 
-  let senseText;
+  let senseText: string;
   if (multimodalSupport.vision && multimodalSupport.audio) {
     senseText = 'see or hear';
   } else if (multimodalSupport.vision) {
@@ -131,7 +131,7 @@ const createWelcomeMessage = (
     senseText = 'hear';
   }
 
-  const contentType =
+  const contentType: string =
     capabilities.length > 1
       ? 'multimedia'
       : capabilities[0]?.replace(' files', '');
@@ -875,7 +875,7 @@ export default function MultimodalScreen({ navigation }: { navigation: any }) {
                 type: 'audio',
               });
             } else {
-              const supportedFormats = [];
+              const supportedFormats: string[] = [];
               if (multimodalSupport.vision) {supportedFormats.push('images');}
               if (multimodalSupport.audio) {supportedFormats.push('audio');}
               const formatText = supportedFormats.join(' or ');
@@ -928,15 +928,13 @@ export default function MultimodalScreen({ navigation }: { navigation: any }) {
             <>
               <Text style={themedStyles.modelSectionTitle}>Custom Models</Text>
               {customModels
-                .filter((model) => model.mmprojFilename) // Only show models with mmproj
+                .filter((model) => model.mmprojFilename)
                 .map((model) => (
-                  <CustomModelCard
+                  <LocalModelCard
                     key={model.id}
+                    kind="custom"
                     model={model}
-                    onInitialize={(modelPath, mmprojPath) =>
-                      initializeModel(modelPath, mmprojPath || '')
-                    }
-                    onModelRemoved={handleCustomModelRemoved}
+                    onInitialize={(modelPath, mmprojPath) => initializeModel(modelPath, mmprojPath || '')}
                     initializeButtonText="Initialize"
                   />
                 ))}

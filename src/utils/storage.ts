@@ -42,13 +42,14 @@ const TTS_PARAMS_KEY = '@llama_tts_params';
 const CUSTOM_MODELS_KEY = '@llama_custom_models';
 const MCP_CONFIG_KEY = '@llama_mcp_config';
 const ROUTSTR_TOKEN_KEY = '@routstr_api_token';
+const HF_TOKEN_KEY = '@hf_access_token';
 const ROUTSTR_FAVORITES_KEY = '@routstr_favorites';
 const ROUTSTR_MODELS_CACHE_KEY = '@routstr_models_cache';
 const ROUTSTR_BASE_URL_KEY = '@routstr_base_url';
 
 // Default parameter values
 export const DEFAULT_CONTEXT_PARAMS: ContextParams = {
-  n_ctx: 8192,
+  n_ctx: 4096,
   n_gpu_layers: 99,
   use_mlock: true,
   use_mmap: true,
@@ -480,6 +481,34 @@ export const resetRoutstrToken = async (): Promise<void> => {
     await AsyncStorage.removeItem(ROUTSTR_TOKEN_KEY);
   } catch (error) {
     console.error('Error resetting Routstr token:', error);
+    throw error;
+  }
+};
+
+// Hugging Face access token
+export const saveHfToken = async (token: string): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(HF_TOKEN_KEY, token);
+  } catch (error) {
+    console.error('Error saving HF token:', error);
+    throw error;
+  }
+};
+
+export const loadHfToken = async (): Promise<string | null> => {
+  try {
+    return (await AsyncStorage.getItem(HF_TOKEN_KEY));
+  } catch (error) {
+    console.error('Error loading HF token:', error);
+    return null;
+  }
+};
+
+export const resetHfToken = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem(HF_TOKEN_KEY);
+  } catch (error) {
+    console.error('Error resetting HF token:', error);
     throw error;
   }
 };

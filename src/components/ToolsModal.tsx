@@ -243,7 +243,7 @@ export default function ToolsModal({
       color: theme.colors.textSecondary,
     },
     formatButtonTextActive: {
-      color: theme.colors.white,
+      color: theme.colors.background,
     },
     section: {
       marginBottom: 24,
@@ -343,7 +343,7 @@ export default function ToolsModal({
       color: theme.colors.textSecondary,
     },
     tabTextActive: {
-      color: theme.colors.white,
+      color: theme.colors.background,
     },
     connectionStatus: {
       backgroundColor: theme.colors.surface,

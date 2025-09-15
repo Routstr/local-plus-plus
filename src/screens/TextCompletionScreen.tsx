@@ -17,14 +17,14 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { TokenData } from 'llama.rn';
-import ModelDownloadCard from '../components/ModelDownloadCard';
+import { LocalModelCard } from '../components/ModelDownloadCard';
 import ModelDropdown from '../components/ModelDropdown';
 import type { UnifiedModelItemProps } from '../components/UnifiedModelItem';
 import { ModelDownloader } from '../services/ModelDownloader';
 import ContextParamsModal from '../components/ContextParamsModal';
 import CompletionParamsModal from '../components/CompletionParamsModal';
 import CustomModelModal from '../components/CustomModelModal';
-import CustomModelCard from '../components/CustomModelCard';
+// removed duplicate import
 import { HeaderButton } from '../components/HeaderButton';
 import { MaskedProgress } from '../components/MaskedProgress';
 import { ParameterTextInput } from '../components/ParameterFormFields';
@@ -501,20 +501,19 @@ export default function TextCompletionScreen({
     setSelectedModelName(model.name);
     setSelectedModelId(model.id);
 
-    // Check if model is downloaded
+    // Initialize from localPath if present, else check downloaded by filename
+    const anyModel = model as any;
+    if (anyModel.localPath) {
+      await handleInitModel(anyModel.localPath as string);
+      return;
+    }
     if (model.filename) {
       const isDownloaded = await ModelDownloader.isModelDownloaded(model.filename);
       if (isDownloaded) {
         const modelPath = await ModelDownloader.getModelPath(model.filename);
-        if (modelPath) {
-          await handleInitModel(modelPath);
-        }
+        if (modelPath) { await handleInitModel(modelPath); }
       } else {
-        Alert.alert(
-          'Model Not Downloaded',
-          `Please download ${model.name} from the model list below.`,
-          [{ text: 'OK' }]
-        );
+        Alert.alert('Model Not Downloaded', `Please download ${model.name} from the model list below.`, [{ text: 'OK' }]);
       }
     }
   };
@@ -545,12 +544,14 @@ export default function TextCompletionScreen({
     {
       title: 'Custom Models',
       models: customModels.map((model) => ({
-        id: model.id,
-        name: model.name,
+        id: `custom:${model.id}`,
+        name: model.id,
         type: 'local' as const,
-        repo: model.hfRepoId || '',
+        repo: model.localPath ? 'Local' : model.repo,
         filename: model.filename || '',
         size: '',
+        localPath: model.localPath || undefined,
+        mmprojLocalPath: model.mmprojLocalPath || undefined,
         onSelect: () => {},
       } as UnifiedModelItemProps)),
     },
@@ -591,16 +592,13 @@ export default function TextCompletionScreen({
                   Custom Models
                 </Text>
                 {customModels.map((model) => (
-                  <CustomModelCard
+                  <LocalModelCard
                     key={model.id}
+                    kind="custom"
                     model={model}
                     onInitialize={(modelPath) => {
-                      setSelectedModelName(model.name);
+                      setSelectedModelName(model.id);
                       handleInitModel(modelPath);
-                    }}
-                    onModelRemoved={async () => {
-                      const models = await loadCustomModels();
-                      setCustomModels(models);
                     }}
                     initializeButtonText="Initialize"
                   />
@@ -629,14 +627,15 @@ export default function TextCompletionScreen({
             ].map((modelKey) => {
               const model = MODELS[modelKey as keyof typeof MODELS];
               return (
-                <ModelDownloadCard
+                <LocalModelCard
                   key={modelKey}
+                  kind="default"
                   title={model.name}
                   repo={model.repo}
                   filename={model.filename}
                   size={model.size}
                   onInitialize={(modelPath) => {
-                    setSelectedModelName(modelInfo.name);
+                    setSelectedModelName(model.name);
                     handleInitModel(modelPath);
                   }}
                 />

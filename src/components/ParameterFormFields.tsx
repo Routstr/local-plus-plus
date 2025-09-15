@@ -32,10 +32,10 @@ export function ParameterTextInput({
 
   return (
     <View style={themedStyles.paramGroup}>
-      <Text style={themedStyles.paramLabel}>{label}</Text>
-      <Text style={themedStyles.paramDescription}>{description}</Text>
+      <Text style={[themedStyles.paramLabel, { letterSpacing: 0.2 }]}>{label}</Text>
+      <Text style={[themedStyles.paramDescription, { marginBottom: 10 }]}>{description}</Text>
       <TextInput
-        style={themedStyles.textInput}
+        style={[themedStyles.textInput, { height: 48 }]}
         value={value}
         onChangeText={onChangeText}
         keyboardType={keyboardType}

@@ -35,25 +35,25 @@ export interface Theme {
 }
 
 const lightColors: ThemeColors = {
-  primary: '#0066CC',
-  background: '#F2F2F7',
+  primary: '#111111',
+  background: '#FFFFFF',
   surface: '#FFFFFF',
-  card: '#F8F9FA',
+  card: '#FFFFFF',
   white: '#FFFFFF',
   black: '#000000',
   text: '#1C1C1E',
   textSecondary: '#636366',
-  border: '#D1D1D6',
+  border: '#E5E5EA',
   error: '#CC3B30',
   disabled: '#C0C0C0',
-  inputBackground: '#F8F8F8',
+  inputBackground: '#FFFFFF',
   shadow: '#000000',
-  buttonBackground: '#1C1C1E',
+  buttonBackground: '#111111',
   valid: '#34A759',
 };
 
 const darkColors: ThemeColors = {
-  primary: '#0066CC',
+  primary: '#8E8E93',
   background: '#000000',
   surface: '#1C1C1E',
   card: '#2C2C2E',
@@ -66,7 +66,7 @@ const darkColors: ThemeColors = {
   disabled: '#48484A',
   inputBackground: '#1C1C1E',
   shadow: '#333',
-  buttonBackground: '#007AFF',
+  buttonBackground: '#2C2C2E',
   valid: '#34A759',
 };
 
