@@ -93,7 +93,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
 
 
 
-  useEffect(() => () => { void llm?.release(); }, [llm]);
+  useEffect(() => () => { llm?.release(); }, [llm]);
 
   const animateBalance = useCallback((from: number, to: number) => {
     if (balanceAnimFrameRef.current) {cancelAnimationFrame(balanceAnimFrameRef.current);}
