@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import RNBlobUtil from 'react-native-blob-util';
+import { ModelDownloader } from '../services/ModelDownloader';
 import { useTheme } from '../contexts/ThemeContext';
 import { formatSatsCompact } from '../utils/pricing';
 
