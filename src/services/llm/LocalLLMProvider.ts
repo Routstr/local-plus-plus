@@ -1,6 +1,6 @@
 import { initLlama, LlamaContext } from 'llama.rn';
 import type { LLMMessage } from '../../utils/llmMessages';
-import type { LLMProvider, LLMProviderKind, SendResult } from './LLMProvider';
+import type { LLMProvider, LLMProviderKind, SendResult, StreamDelta } from './LLMProvider';
 
 type InitArgs = {
   model: string
@@ -29,7 +29,7 @@ export class LocalLLMProvider implements LLMProvider {
     this.context = await initLlama({ model, ...params }, (p) => onProgress?.(p));
   }
 
-  async sendChat(messages: LLMMessage[], onDelta: (content: string) => void): Promise<SendResult> {
+  async sendChat(messages: LLMMessage[], onDelta: (delta: StreamDelta) => void): Promise<SendResult> {
     if (!this.context) {throw new Error('Model not initialized');}
     const completionResult = await this.context.completion(
       {
@@ -38,8 +38,12 @@ export class LocalLLMProvider implements LLMProvider {
         jinja: true,
       },
       (data) => {
-        const { content = '' } = data;
-        if (content) {onDelta(content.replace(/^\s+/, ''));}
+        const { content = '', reasoning_content, tool_calls } = data as { content?: string; reasoning_content?: string; tool_calls?: any[] };
+        const payload: StreamDelta = {};
+        if (content) { payload.content = content.replace(/^\s+/, ''); }
+        if (reasoning_content) { payload.reasoning_content = reasoning_content; }
+        if (tool_calls) { payload.tool_calls = tool_calls; }
+        if (payload.content || payload.reasoning_content || payload.tool_calls) { onDelta(payload); }
       },
     );
     const content = completionResult.interrupted ? completionResult.text : completionResult.content;
