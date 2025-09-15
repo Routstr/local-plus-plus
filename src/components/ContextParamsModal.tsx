@@ -161,7 +161,7 @@ export default function ContextParamsModal({
           }
         }}
         keyboardType="numeric"
-        placeholder="8192"
+        placeholder="4096"
       />
 
       {/* GPU Layers */}
