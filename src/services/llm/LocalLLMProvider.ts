@@ -21,6 +21,11 @@ export class LocalLLMProvider implements LLMProvider {
 
   async initialize(args: InitArgs): Promise<void> {
     const { model, params, onProgress } = args;
+    if (this.context) {
+      try { await this.context.release(); } catch {}
+      this.context = null;
+    }
+    if (__DEV__) { try { console.log('[LocalLLMProvider] init', model); } catch {} }
     this.context = await initLlama({ model, ...params }, (p) => onProgress?.(p));
   }
 
@@ -47,6 +52,7 @@ export class LocalLLMProvider implements LLMProvider {
 
   async release(): Promise<void> {
     if (this.context) {
+      if (__DEV__) { try { console.log('[LocalLLMProvider] release'); } catch {} }
       await this.context.release();
       this.context = null;
     }

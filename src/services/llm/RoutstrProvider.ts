@@ -115,7 +115,7 @@ export class RoutstrProvider implements LLMProvider {
   }
 
   stop(): void { this.currentXhr?.abort(); this.currentXhr = null; }
-  release(): void {}
+  release(): void { this.stop(); }
 }
 
 
