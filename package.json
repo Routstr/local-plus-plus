@@ -1,6 +1,6 @@
 {
   "name": "LocalPlusPlus",
-  "version": "0.1.2",
+  "version": "0.0.2",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
@@ -10,7 +10,8 @@
     "postinstall": "patch-package",
     "set-icons": "scripts/set-icons.sh",
     "lint": "eslint . --ext .ts,.tsx",
-    "lint:fix": "eslint . --ext .ts,.tsx --fix"
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "bump:version": "scripts/bump-version.sh"
   },
   "dependencies": {
     "@flyerhq/react-native-chat-ui": "^1.4.3",
