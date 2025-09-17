@@ -110,3 +110,52 @@ jobs:
           files: |
             android/app/build/outputs/apk/release/localplusplus.apk
           generate_release_notes: true
+
+  zapstore-publish:
+    needs: build-release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install zapstore CLI
+        run: |
+          set -euo pipefail
+          curl -sL https://cdn.zapstore.dev/6e2c7cf6da53c3f1a78b523a6aacd6316dce3d74ace6f859c2676729ee439990 -o zapstore
+          echo "6e2c7cf6da53c3f1a78b523a6aacd6316dce3d74ace6f859c2676729ee439990  zapstore" | sha256sum -c -
+          chmod +x zapstore
+          sudo mv zapstore /usr/local/bin/zapstore
+
+      - name: Install nak CLI
+        run: |
+          set -euo pipefail
+          curl -sL https://github.com/fiatjaf/nak/releases/download/v0.16.2/nak-v0.16.2-linux-amd64 -o nak
+          chmod +x nak
+          sudo mv nak /usr/local/bin/nak
+
+      - name: Publish to Zapstore
+        env:
+          SIGN_WITH: ${{ secrets.ZAPSTORE_NPUB }}
+          NAK_NSEC: ${{ secrets.NAK_NSEC }}
+          NAK_CONNECT_AS: ${{ secrets.NAK_CONNECT_AS }}
+          NAK_BUNKER: ${{ secrets.NAK_BUNKER_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SIGN_WITH:-}" ]; then
+            echo "Missing SIGN_WITH (ZAPSTORE_NPUB) secret." >&2
+            exit 1
+          fi
+          if [ -n "${NAK_BUNKER:-}" ]; then
+            SEC_VALUE="${NAK_BUNKER}"
+          elif [ -n "${NAK_NSEC:-}" ]; then
+            SEC_VALUE="${NAK_NSEC}"
+          else
+            echo "Provide NAK_BUNKER_URL or NAK_NSEC secret." >&2
+            exit 1
+          fi
+          CONNECT_AS_ARGS=()
+          if [ -n "${NAK_CONNECT_AS:-}" ]; then
+            CONNECT_AS_ARGS=(--connect-as "${NAK_CONNECT_AS}")
+          fi
+          zapstore publish | nak event --sec "${SEC_VALUE}" "${CONNECT_AS_ARGS[@]}" wss://relay.zapstore.dev

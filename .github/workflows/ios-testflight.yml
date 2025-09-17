@@ -1,0 +1,120 @@
+name: iOS TestFlight
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g., v1.0.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-upload:
+    runs-on: macos-14
+    env:
+      CI: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Set up Xcode 15.4
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "15.4"
+
+      - name: Install CocoaPods and pods
+        working-directory: ios
+        run: |
+          gem install cocoapods -N
+          pod install --repo-update
+
+      # Signing material must be provided as GitHub secrets:
+      #   IOS_DIST_P12_BASE64: base64 of your Apple Distribution .p12
+      #   IOS_DIST_P12_PASSWORD: password for the .p12
+      #   IOS_MOBILEPROVISION_BASE64: base64 of your App Store provisioning profile (.mobileprovision)
+      #   IOS_PROVISIONING_PROFILE_NAME: provisioning profile name as shown in Apple Developer portal
+      - name: Import signing certificate and profile
+        uses: apple-actions/import-codesign-certs@v2
+        with:
+          p12-file-base64: ${{ secrets.IOS_DIST_P12_BASE64 }}
+          p12-password: ${{ secrets.IOS_DIST_P12_PASSWORD }}
+          mobileprovision-file-base64: ${{ secrets.IOS_MOBILEPROVISION_BASE64 }}
+
+      - name: Bump build number
+        working-directory: ios
+        run: xcrun agvtool new-version -all $GITHUB_RUN_NUMBER
+
+      - name: Archive (Release)
+        run: |
+          xcodebuild \
+            -workspace ios/LocalPlusPlus.xcworkspace \
+            -scheme LocalPlusPlus \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath build/LocalPlusPlus.xcarchive \
+            clean archive \
+            DEVELOPMENT_TEAM=YLK778Z528 \
+            PRODUCT_BUNDLE_IDENTIFIER=com.routstr.localplusplus \
+            CODE_SIGN_STYLE=Manual \
+            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}" \
+            COMPILER_INDEX_STORE_ENABLE=NO
+
+      - name: Export IPA
+        run: |
+          mkdir -p build
+          cat > ExportOptions.plist <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>stripSwiftSymbols</key>
+            <true/>
+            <key>teamID</key>
+            <string>YLK778Z528</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.routstr.localplusplus</key>
+              <string>${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}</string>
+            </dict>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild -exportArchive -archivePath build/LocalPlusPlus.xcarchive -exportPath build -exportOptionsPlist ExportOptions.plist
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: localplusplus-ipa
+          path: build/LocalPlusPlus.ipa
+
+      # App Store Connect API Key must be configured:
+      #   APPSTORE_ISSUER_ID (Repository Variable)
+      #   APPSTORE_API_KEY_ID (Repository Variable)
+      #   APPSTORE_API_PRIVATE_KEY (Repository Secret) — full contents of .p8
+      - name: Upload to TestFlight
+        uses: apple-actions/upload-testflight-build@v3
+        with:
+          app-path: build/LocalPlusPlus.ipa
+          issuer-id: ${{ vars.APPSTORE_ISSUER_ID }}
+          api-key-id: ${{ vars.APPSTORE_API_KEY_ID }}
+          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+          # skip-waiting-for-build-processing: true
