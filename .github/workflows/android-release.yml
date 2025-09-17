@@ -137,25 +137,8 @@ jobs:
       - name: Publish to Zapstore
         env:
           SIGN_WITH: ${{ secrets.ZAPSTORE_NPUB }}
-          NAK_NSEC: ${{ secrets.NAK_NSEC }}
           NAK_CONNECT_AS: ${{ secrets.NAK_CONNECT_AS }}
           NAK_BUNKER: ${{ secrets.NAK_BUNKER_URL }}
         run: |
           set -euo pipefail
-          if [ -z "${SIGN_WITH:-}" ]; then
-            echo "Missing SIGN_WITH (ZAPSTORE_NPUB) secret." >&2
-            exit 1
-          fi
-          if [ -n "${NAK_BUNKER:-}" ]; then
-            SEC_VALUE="${NAK_BUNKER}"
-          elif [ -n "${NAK_NSEC:-}" ]; then
-            SEC_VALUE="${NAK_NSEC}"
-          else
-            echo "Provide NAK_BUNKER_URL or NAK_NSEC secret." >&2
-            exit 1
-          fi
-          CONNECT_AS_ARGS=()
-          if [ -n "${NAK_CONNECT_AS:-}" ]; then
-            CONNECT_AS_ARGS=(--connect-as "${NAK_CONNECT_AS}")
-          fi
-          zapstore publish | nak event --sec "${SEC_VALUE}" "${CONNECT_AS_ARGS[@]}" wss://relay.zapstore.dev
+          SIGN_WITH="${SIGN_WITH}" zapstore publish | nak event --sec "${NAK_BUNKER}" --connect-as "${NAK_CONNECT_AS}" wss://relay.zapstore.dev
