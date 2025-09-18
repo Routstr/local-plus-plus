@@ -1,3 +1,11 @@
+identifier: com.routstr.localplusplus
+name: Local++
+summary: Local++ is a local-first AI Chatbot that runs on your phone.
+description: Local++ is a local-first AI chatbot that runs entirely on your phone. Download models from Hugging Face or access the decentralized AI marketplace Routstr with anonymous payments via Cashu tokens.
+author: Routstr
+license: MIT
+homepage: https://routstr.com
+tags: ai freedom-tech local-first chatbot
 repository: https://github.com/routstr/local-plus-plus
 icon: logo.png
 assets:
