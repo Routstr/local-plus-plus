@@ -26,7 +26,7 @@ while [[ $# -gt 0 ]]; do
     *) echo "Unknown option: $1" 1>&2; usage; exit 1 ;;
   esac
   shift || true
-end
+done
 
 if [[ ! "$VERSION" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]]; then
   echo "Error: version must look like MAJOR.MINOR or MAJOR.MINOR.PATCH (e.g. 0.1.2)" 1>&2
@@ -61,16 +61,16 @@ fi
 # Android
 ANDROID_BUILD="$ROOT_DIR/android/app/build.gradle"
 if [[ -f "$ANDROID_BUILD" ]]; then
-  sed -i '' -E "s/versionName\\s+\"[^\"]+\"/versionName \"$VERSION\"/" "$ANDROID_BUILD"
-  sed -i '' -E "s/versionCode\\s+[0-9]+/versionCode $CODE/" "$ANDROID_BUILD"
+  sed -i '' -E "s/versionName[[:space:]]+\"[^\"]+\"/versionName \"$VERSION\"/" "$ANDROID_BUILD"
+  sed -i '' -E "s/versionCode[[:space:]]+[0-9]+/versionCode $CODE/" "$ANDROID_BUILD"
   echo "[bump-version] Android updated: versionName=$VERSION, versionCode=$CODE"
 fi
 
 # iOS project
 IOS_PBXPROJ="$ROOT_DIR/ios/LocalPlusPlus.xcodeproj/project.pbxproj"
 if [[ -f "$IOS_PBXPROJ" ]]; then
-  sed -i '' -E "s/MARKETING_VERSION = [^;]+;/MARKETING_VERSION = $VERSION;/g" "$IOS_PBXPROJ"
-  sed -i '' -E "s/CURRENT_PROJECT_VERSION = [^;]+;/CURRENT_PROJECT_VERSION = $CODE;/g" "$IOS_PBXPROJ"
+  sed -i '' -E "s/MARKETING_VERSION[[:space:]]*=[[:space:]]*[^;]+;/MARKETING_VERSION = $VERSION;/g" "$IOS_PBXPROJ"
+  sed -i '' -E "s/CURRENT_PROJECT_VERSION[[:space:]]*=[[:space:]]*[^;]+;/CURRENT_PROJECT_VERSION = $CODE;/g" "$IOS_PBXPROJ"
   echo "[bump-version] iOS .xcodeproj updated: MARKETING_VERSION=$VERSION, CURRENT_PROJECT_VERSION=$CODE"
 fi
 
@@ -78,8 +78,18 @@ fi
 update_plist_version() {
   local plist="$1"
   [[ -f "$plist" ]] || return 0
-  sed -i '' -E "s#(<key>CFBundleShortVersionString</key>[[:space:]]*<string>)[0-9]+(\.[0-9]+){0,2}(</string>)#\\1$VERSION\\3#" "$plist" || true
-  sed -i '' -E "s#(<key>CFBundleVersion</key>[[:space:]]*<string>)[0-9]+(</string>)#\\1$CODE\\2#" "$plist" || true
+  if command -v /usr/libexec/PlistBuddy >/dev/null 2>&1; then
+    # CFBundleShortVersionString
+    /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$plist" >/dev/null 2>&1 \
+      || /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $VERSION" "$plist" >/dev/null 2>&1 || true
+    # CFBundleVersion
+    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $CODE" "$plist" >/dev/null 2>&1 \
+      || /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $CODE" "$plist" >/dev/null 2>&1 || true
+  else
+    # Fallback best-effort: replace within a single line (works if key+string are on one line)
+    sed -i '' -E "s#(<key>CFBundleShortVersionString</key>[[:space:]]*<string>)[0-9]+(\.[0-9]+){0,2}(</string>)#\\1$VERSION\\3#" "$plist" || true
+    sed -i '' -E "s#(<key>CFBundleVersion</key>[[:space:]]*<string>)[0-9]+(</string>)#\\1$CODE\\2#" "$plist" || true
+  fi
 }
 
 update_plist_version "$ROOT_DIR/ios/LocalPlusPlus/Info.plist"
@@ -95,5 +105,3 @@ if $DO_TAG; then
 fi
 
 echo "[bump-version] Done."
-
-

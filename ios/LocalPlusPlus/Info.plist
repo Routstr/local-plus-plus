@@ -21,18 +21,18 @@
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>12</string>
 	<key>LSRequiresIPhoneOS</key>
-	<true />
+	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
-		<false />
+		<false/>
 		<key>NSAllowsLocalNetworking</key>
-		<true />
+		<true/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string />
+	<string></string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app may use the microphone to enable voice input features for AI interactions.</string>
 	<key>UIAppFonts</key>
@@ -60,6 +60,6 @@
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
-	<false />
+	<false/>
 </dict>
 </plist>
