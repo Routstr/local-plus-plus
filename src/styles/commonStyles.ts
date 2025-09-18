@@ -13,7 +13,7 @@ export const chatLightTheme = {
     ...defaultLightTheme.colors,
     background: '#FFFFFF',
     primary: '#111111',
-    secondary: '#FFFFFF',
+    secondary: '#F7F7F8',
     inputBackground: '#FFFFFF',
     inputText: '#0A0A0A',
     error: '#EF4444',
