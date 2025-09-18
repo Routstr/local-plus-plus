@@ -12,15 +12,15 @@ export const chatLightTheme = {
   colors: {
     ...defaultLightTheme.colors,
     background: '#FFFFFF',
-    primary: '#1C1C1E',
+    primary: '#111111',
     secondary: '#FFFFFF',
     inputBackground: '#FFFFFF',
-    inputText: '#1C1C1E',
-    error: '#CC3B30',
-    receivedMessageDocumentIcon: '#8E8E93',
-    sentMessageDocumentIcon: '#8E8E93',
-    userAvatarImageBackground: '#E5E5EA',
-    userAvatarNameColors: ['#1C1C1E', '#2C2C2E', '#636366', '#8E8E93', '#AEAEB2', '#C7C7CC', '#D1D1D6'],
+    inputText: '#0A0A0A',
+    error: '#EF4444',
+    receivedMessageDocumentIcon: '#71717A',
+    sentMessageDocumentIcon: '#71717A',
+    userAvatarImageBackground: '#E4E4E7',
+    userAvatarNameColors: ['#0A0A0A', '#111111', '#3F3F46', '#52525B', '#71717A', '#A1A1AA', '#D4D4D8'],
   },
 };
 
@@ -33,16 +33,16 @@ export const chatDarkTheme = {
   },
   colors: {
     ...defaultDarkTheme.colors,
-    background: '#000000',
-    primary: '#8E8E93',
-    secondary: '#1C1C1E',
-    inputBackground: '#1C1C1E',
-    inputText: '#FFFFFF',
-    error: '#CC453A',
-    receivedMessageDocumentIcon: '#8E8E93',
-    sentMessageDocumentIcon: '#8E8E93',
-    userAvatarImageBackground: '#2C2C2E',
-    userAvatarNameColors: ['#1C1C1E', '#2C2C2E', '#636366', '#8E8E93', '#AEAEB2', '#C7C7CC', '#D1D1D6'],
+    background: '#09090B',
+    primary: '#FAFAFA',
+    secondary: '#0F0F10',
+    inputBackground: '#0F0F10',
+    inputText: '#FAFAFA',
+    error: '#EF4444',
+    receivedMessageDocumentIcon: '#A1A1AA',
+    sentMessageDocumentIcon: '#A1A1AA',
+    userAvatarImageBackground: '#18181B',
+    userAvatarNameColors: ['#FAFAFA', '#E5E5E5', '#D4D4D8', '#A1A1AA', '#71717A', '#52525B', '#3F3F46'],
   },
 };
 
@@ -67,7 +67,7 @@ export const FontSizes = {
 
 // Function to create themed styles
 export const createThemedStyles = (colors: ThemeColors) => {
-  const isDark = colors.background === '#000000';
+  const isDark = ['#000000', '#09090B'].includes(colors.background);
 
   return StyleSheet.create({
     // Container styles
@@ -95,11 +95,8 @@ export const createThemedStyles = (colors: ThemeColors) => {
       backgroundColor: colors.surface,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDark ? 0.2 : 0.05,
-      shadowRadius: isDark ? 3 : 2,
-      elevation: 1,
+      shadowColor: 'transparent',
+      elevation: 0,
     },
     headerRow: {
       flexDirection: 'row',
@@ -142,12 +139,7 @@ export const createThemedStyles = (colors: ThemeColors) => {
       margin: 10,
       padding: 10,
       backgroundColor: colors.buttonBackground,
-      borderRadius: 6,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDark ? 0.25 : 0.08,
-      shadowRadius: isDark ? 3 : 2,
-      elevation: 1,
+      borderRadius: 8,
     },
     buttonText: {
       color: colors.white,
@@ -158,12 +150,7 @@ export const createThemedStyles = (colors: ThemeColors) => {
       backgroundColor: colors.primary,
       paddingHorizontal: Spacing.xl,
       paddingVertical: Spacing.md,
-      borderRadius: 8,
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDark ? 0.35 : 0.15,
-      shadowRadius: isDark ? 4 : 3,
-      elevation: 2,
+      borderRadius: 10,
     },
     primaryButtonText: {
       color: colors.white,
@@ -174,20 +161,14 @@ export const createThemedStyles = (colors: ThemeColors) => {
       backgroundColor: colors.disabled,
     },
     primaryButtonActive: {
-      backgroundColor: isDark ? '#3A3A3C' : '#111111',
+      backgroundColor: isDark ? '#3F3F46' : '#0A0A0A',
       transform: [{ scale: 0.98 }],
-      shadowOpacity: isDark ? 0.6 : 0.35,
     },
     secondaryButton: {
       paddingHorizontal: Spacing.md,
       paddingVertical: Spacing.xs,
       backgroundColor: colors.error,
       borderRadius: 8,
-      shadowColor: colors.error,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDark ? 0.25 : 0.12,
-      shadowRadius: isDark ? 3 : 2,
-      elevation: 1,
     },
     secondaryButtonText: {
       color: colors.white,

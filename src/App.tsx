@@ -60,7 +60,18 @@ const Stack = createNativeStackNavigator();
 
 function AppContent() {
   const { theme } = useTheme();
-  const navigationTheme = theme.dark ? DarkTheme : DefaultTheme;
+  const navigationTheme = React.useMemo(() => ({
+    ...(theme.dark ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(theme.dark ? DarkTheme.colors : DefaultTheme.colors),
+      primary: theme.colors.primary,
+      background: theme.colors.background,
+      card: theme.colors.surface,
+      text: theme.colors.text,
+      border: theme.colors.border,
+      notification: theme.colors.error,
+    },
+  }), [theme]);
   React.useEffect(() => {
     // Hard-cap contexts to one at a time to prevent double loads on iOS
     setContextLimit(1);
