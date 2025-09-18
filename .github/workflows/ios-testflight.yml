@@ -57,6 +57,13 @@ jobs:
           p12-password: ${{ secrets.IOS_DIST_P12_PASSWORD }}
           mobileprovision-file-base64: ${{ secrets.IOS_MOBILEPROVISION_BASE64 }}
 
+      - name: Authenticate with App Store Connect (API key)
+        uses: apple-actions/authenticate-app-store-connect@v2
+        with:
+          api-key-id: ${{ vars.APPSTORE_API_KEY_ID }}
+          api-issuer-id: ${{ vars.APPSTORE_ISSUER_ID }}
+          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+
       - name: Bump build number
         working-directory: ios
         run: xcrun agvtool new-version -all $GITHUB_RUN_NUMBER
