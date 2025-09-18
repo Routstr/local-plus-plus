@@ -79,19 +79,27 @@ jobs:
       - name: Export IPA
         run: |
           mkdir -p build
+          # Write App Store Connect API key to file for xcodebuild export authentication
+          printf "%s" "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" > AuthKey.p8
           cat > ExportOptions.plist <<'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
             <key>method</key>
-            <string>app-store</string>
+            <string>app-store-connect</string>
             <key>signingStyle</key>
             <string>automatic</string>
             <key>stripSwiftSymbols</key>
             <true/>
             <key>teamID</key>
             <string>YLK778Z528</string>
+            <key>authenticationKeyID</key>
+            <string>${{ vars.APPSTORE_API_KEY_ID }}</string>
+            <key>authenticationKeyIssuerID</key>
+            <string>${{ vars.APPSTORE_ISSUER_ID }}</string>
+            <key>authenticationKeyPath</key>
+            <string>AuthKey.p8</string>
           </dict>
           </plist>
           EOF
