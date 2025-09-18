@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
@@ -22,6 +22,7 @@ export const Bubble = ({
 
   const [showReasoning, setShowReasoning] = useState(false);
   const [showToolCalls, setShowToolCalls] = useState(false);
+  const userToggledReasoningRef = useRef(false);
 
   const Container = copyable ? TouchableOpacity : View;
 
@@ -58,6 +59,26 @@ export const Bubble = ({
     partialCompletionResult && partialCompletionResult?.reasoning_content;
   const isStreamingToolCalls =
     partialCompletionResult && partialCompletionResult?.tool_calls;
+  const isStreaming = !!partialCompletionResult && !completionResult;
+  const isStreamingContent = !!partialCompletionResult?.content;
+
+  // Reset toggle state when a different message instance is rendered
+  useEffect(() => {
+    userToggledReasoningRef.current = false;
+    setShowReasoning(false);
+  }, [message?.id]);
+
+  // Auto-show reasoning during thinking; hide when final content starts streaming
+  useEffect(() => {
+    if (userToggledReasoningRef.current) { return; }
+    if (isStreaming) {
+      if (isStreamingReasoning && !isStreamingContent) {
+        setShowReasoning(true);
+      } else if (isStreamingContent) {
+        setShowReasoning(false);
+      }
+    }
+  }, [isStreaming, isStreamingReasoning, isStreamingContent]);
 
   return (
     <Container
@@ -91,7 +112,7 @@ export const Bubble = ({
             paddingVertical: 4,
             backgroundColor: overlayBackground,
           }}
-          onPress={() => setShowReasoning(!showReasoning)}
+          onPress={() => { userToggledReasoningRef.current = true; setShowReasoning(!showReasoning); }}
         >
           <Text
             style={{
