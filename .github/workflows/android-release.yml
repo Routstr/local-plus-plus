@@ -141,4 +141,4 @@ jobs:
           NAK_BUNKER: ${{ secrets.NAK_BUNKER_URL }}
         run: |
           set -euo pipefail
-          SIGN_WITH="${SIGN_WITH}" zapstore publish | nak event --sec "${NAK_BUNKER}" --connect-as "${NAK_CONNECT_AS}" wss://relay.zapstore.dev
+          SIGN_WITH="${SIGN_WITH}" zapstore publish --honor --indexer-mode | nak event --sec "${NAK_BUNKER}" --connect-as "${NAK_CONNECT_AS}" wss://relay.zapstore.dev
