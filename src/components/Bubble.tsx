@@ -19,6 +19,7 @@ export const Bubble = ({
   const currentUserIsAuthor = user?.id === message.author.id;
   const { copyable, timings, completionResult, partialCompletionResult } =
     message.metadata || {};
+  const isRoutstr = message?.metadata?.provider === 'routstr';
 
   const [showReasoning, setShowReasoning] = useState(false);
   const [showToolCalls, setShowToolCalls] = useState(false);
@@ -121,7 +122,7 @@ export const Bubble = ({
               fontWeight: '600',
             }}
           >
-            {showReasoning ? '💭 Hide Reasoning' : '💭 Show Reasoning'}
+            {showReasoning ? 'Hide Reasoning' : 'Show Reasoning'}
           </Text>
         </TouchableOpacity>
       )}
@@ -131,7 +132,8 @@ export const Bubble = ({
         <View
           style={{
             paddingHorizontal: 12,
-            paddingVertical: 8,
+            paddingTop: 8,
+            paddingBottom: isRoutstr ? 2 : 8,
             backgroundColor: sectionBackground,
             borderBottomWidth: 1,
             borderBottomColor: borderColor,
@@ -151,7 +153,15 @@ export const Bubble = ({
       )}
 
       {/* Show main content */}
-      <View>{child}</View>
+      <View
+        style={
+          showReasoning && (hasReasoningContent || isStreamingReasoning) && isRoutstr
+            ? { marginTop: -4 }
+            : undefined
+        }
+      >
+        {child}
+      </View>
 
       {/* Show toggle button for tool calls if available */}
       {(hasToolCalls || isStreamingToolCalls) && (

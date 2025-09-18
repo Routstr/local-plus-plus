@@ -126,7 +126,9 @@ export class RoutstrProvider implements LLMProvider {
           try {
             // process any remaining buffered data
             processBuffer();
-            resolve({ content: accumulated, metadata: { provider: 'routstr', streamed: true, completionResult: { content: accumulated, reasoning_content: accumulatedReasoning } } });
+            const finalContent = typeof accumulated === 'string' ? accumulated.replace(/^\s+/, '') : accumulated;
+            const finalReasoning = typeof accumulatedReasoning === 'string' ? accumulatedReasoning : accumulatedReasoning;
+            resolve({ content: finalContent, metadata: { provider: 'routstr', streamed: true, completionResult: { content: finalContent, reasoning_content: finalReasoning } } });
           } catch (e) {
             reject(e as Error);
           } finally {
