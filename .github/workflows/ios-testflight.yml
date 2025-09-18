@@ -57,13 +57,6 @@ jobs:
           p12-password: ${{ secrets.IOS_DIST_P12_PASSWORD }}
           mobileprovision-file-base64: ${{ secrets.IOS_MOBILEPROVISION_BASE64 }}
 
-      - name: Authenticate with App Store Connect (API key)
-        uses: apple-actions/authenticate-app-store-connect@v2
-        with:
-          api-key-id: ${{ vars.APPSTORE_API_KEY_ID }}
-          api-issuer-id: ${{ vars.APPSTORE_ISSUER_ID }}
-          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
-
       - name: Bump build number
         working-directory: ios
         run: xcrun agvtool new-version -all $GITHUB_RUN_NUMBER
@@ -79,7 +72,9 @@ jobs:
             clean archive \
             DEVELOPMENT_TEAM=YLK778Z528 \
             PRODUCT_BUNDLE_IDENTIFIER=com.routstr.localplusplus \
-            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}" \
             COMPILER_INDEX_STORE_ENABLE=NO \
             -allowProvisioningUpdates
 
@@ -95,12 +90,17 @@ jobs:
           <dict>
             <key>method</key>
             <string>app-store-connect</string>
-            <key>signingStyle</key>
-            <string>automatic</string>
+          <key>signingStyle</key>
+          <string>manual</string>
             <key>stripSwiftSymbols</key>
             <true/>
             <key>teamID</key>
             <string>YLK778Z528</string>
+          <key>provisioningProfiles</key>
+          <dict>
+            <key>com.routstr.localplusplus</key>
+            <string>${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}</string>
+          </dict>
             <key>authenticationKeyID</key>
             <string>${{ vars.APPSTORE_API_KEY_ID }}</string>
             <key>authenticationKeyIssuerID</key>
