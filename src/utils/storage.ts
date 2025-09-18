@@ -45,6 +45,7 @@ const HF_TOKEN_KEY = '@hf_access_token';
 const ROUTSTR_FAVORITES_KEY = '@routstr_favorites';
 const ROUTSTR_MODELS_CACHE_KEY = '@routstr_models_cache';
 const ROUTSTR_BASE_URL_KEY = '@routstr_base_url';
+const LAST_SELECTED_MODEL_KEY = '@last_selected_model';
 
 // Default parameter values
 export const DEFAULT_CONTEXT_PARAMS: ContextParams = {
@@ -364,6 +365,47 @@ export const resetRoutstrBaseUrl = async (): Promise<void> => {
   }
 };
 
+// Last selected model persistence
+export type LastSelectedModelProvider = 'local' | 'routstr'
+
+export interface LastSelectedModel {
+  provider: LastSelectedModelProvider
+  id: string
+  name: string
+  filename?: string
+  localPath?: string
+  apiId?: string
+}
+
+export const saveLastSelectedModel = async (model: LastSelectedModel): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(LAST_SELECTED_MODEL_KEY, JSON.stringify(model));
+  } catch (error) {
+    console.error('Error saving last selected model:', error);
+    throw error;
+  }
+};
+
+export const loadLastSelectedModel = async (): Promise<LastSelectedModel | null> => {
+  try {
+    const jsonValue = await AsyncStorage.getItem(LAST_SELECTED_MODEL_KEY);
+    if (!jsonValue) { return null; }
+    return JSON.parse(jsonValue) as LastSelectedModel;
+  } catch (error) {
+    console.error('Error loading last selected model:', error);
+    return null;
+  }
+};
+
+export const resetLastSelectedModel = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem(LAST_SELECTED_MODEL_KEY);
+  } catch (error) {
+    console.error('Error resetting last selected model:', error);
+    throw error;
+  }
+};
+
 // Routstr favorites
 export const loadRoutstrFavorites = async (): Promise<string[]> => {
   try {
@@ -417,3 +459,147 @@ export const saveRoutstrModelsCache = async (models: RoutstrModelCached[]): Prom
     throw error;
   }
 };
+
+// Chat sessions storage
+export interface ChatSessionMeta {
+  id: string
+  title: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface ChatSessionData {
+  id: string
+  messages: any[]
+  systemPrompt?: string
+  updatedAt: number
+}
+
+const CHAT_SESSIONS_INDEX_KEY = '@chat_sessions_index';
+const CHAT_SESSION_KEY_PREFIX = '@chat_session:';
+const CHAT_ACTIVE_SESSION_ID_KEY = '@chat_active_session_id';
+
+const generateId = (): string => Math.random().toString(36).slice(2);
+
+export const loadChatSessionsIndex = async (): Promise<ChatSessionMeta[]> => {
+  try {
+    const jsonValue = await AsyncStorage.getItem(CHAT_SESSIONS_INDEX_KEY);
+    if (jsonValue) { return JSON.parse(jsonValue); }
+    return [];
+  } catch (error) {
+    console.error('Error loading chat sessions index:', error);
+    return [];
+  }
+};
+
+export const saveChatSessionsIndex = async (sessions: ChatSessionMeta[]): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(CHAT_SESSIONS_INDEX_KEY, JSON.stringify(sessions));
+  } catch (error) {
+    console.error('Error saving chat sessions index:', error);
+    throw error;
+  }
+};
+
+export const loadChatSession = async (sessionId: string): Promise<ChatSessionData | null> => {
+  try {
+    const jsonValue = await AsyncStorage.getItem(`${CHAT_SESSION_KEY_PREFIX}${sessionId}`);
+    if (!jsonValue) { return null; }
+    return JSON.parse(jsonValue);
+  } catch (error) {
+    console.error('Error loading chat session:', error);
+    return null;
+  }
+};
+
+export const saveChatSession = async (data: ChatSessionData): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(`${CHAT_SESSION_KEY_PREFIX}${data.id}`, JSON.stringify(data));
+  } catch (error) {
+    console.error('Error saving chat session:', error);
+    throw error;
+  }
+};
+
+export const deleteChatSession = async (sessionId: string): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem(`${CHAT_SESSION_KEY_PREFIX}${sessionId}`);
+    const index = await loadChatSessionsIndex();
+    const next = index.filter((s) => s.id !== sessionId);
+    await saveChatSessionsIndex(next);
+  } catch (error) {
+    console.error('Error deleting chat session:', error);
+    throw error;
+  }
+};
+
+export const createChatSession = async (title: string = 'New Chat', systemPrompt?: string): Promise<ChatSessionMeta> => {
+  const now = Date.now();
+  const id = generateId();
+  const meta: ChatSessionMeta = { id, title, createdAt: now, updatedAt: now };
+  const data: ChatSessionData = { id, messages: [], systemPrompt, updatedAt: now };
+  const index = await loadChatSessionsIndex();
+  await Promise.all([
+    saveChatSessionsIndex([meta, ...index]),
+    saveChatSession(data),
+  ]);
+  return meta;
+};
+
+export const renameChatSession = async (sessionId: string, title: string): Promise<void> => {
+  try {
+    const index = await loadChatSessionsIndex();
+    const next = index.map((s) => (s.id === sessionId ? { ...s, title } : s));
+    await saveChatSessionsIndex(next);
+  } catch (error) {
+    console.error('Error renaming chat session:', error);
+    throw error;
+  }
+};
+
+export const setActiveChatSessionId = async (sessionId: string): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(CHAT_ACTIVE_SESSION_ID_KEY, sessionId);
+  } catch (error) {
+    console.error('Error saving active chat session id:', error);
+    throw error;
+  }
+};
+
+export const loadActiveChatSessionId = async (): Promise<string | null> => {
+  try {
+    return await AsyncStorage.getItem(CHAT_ACTIVE_SESSION_ID_KEY);
+  } catch (error) {
+    console.error('Error loading active chat session id:', error);
+    return null;
+  }
+};
+
+export const upsertChatSessionFromMessages = async (
+  sessionId: string,
+  messages: any[],
+  systemPrompt?: string,
+): Promise<void> => {
+  const now = Date.now();
+  const existing = await loadChatSession(sessionId);
+  const data: ChatSessionData = {
+    id: sessionId,
+    messages,
+    systemPrompt: systemPrompt ?? existing?.systemPrompt,
+    updatedAt: now,
+  };
+  await saveChatSession(data);
+  const index = await loadChatSessionsIndex();
+  const titleSource = (() => {
+    const firstUser = [...messages].reverse().find((m: any) => m?.type === 'text' && m?.author?.id === 'user');
+    const text: string = firstUser?.text || 'New Chat';
+    return text.length > 48 ? `${text.slice(0, 48)}…` : text;
+  })();
+  const updatedMeta: ChatSessionMeta | null = index.find((s) => s.id === sessionId)
+    ? null
+    : { id: sessionId, title: titleSource, createdAt: now, updatedAt: now };
+  const next = index
+    .map((s) => (s.id === sessionId ? { ...s, title: titleSource, updatedAt: now } : s));
+  await saveChatSessionsIndex(updatedMeta ? [updatedMeta, ...next] : next);
+};
+

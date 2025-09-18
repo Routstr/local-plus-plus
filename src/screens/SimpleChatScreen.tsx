@@ -23,12 +23,26 @@ import { Bubble } from '../components/Bubble';
 import { MaskedProgress } from '../components/MaskedProgress';
 import { HeaderButton } from '../components/HeaderButton';
 import { StopButton } from '../components/StopButton';
+import ChatHistoryDrawer from '../components/ChatHistoryDrawer';
 import { ModelDownloader } from '../services/ModelDownloader';
 import { createThemedStyles, chatDarkTheme, chatLightTheme } from '../styles/commonStyles';
 import { useTheme } from '../contexts/ThemeContext';
 import { MODELS } from '../utils/constants';
 import type { ContextParams } from '../utils/storage';
-import { loadContextParams, loadRoutstrFavorites, loadRoutstrModelsCache, loadCustomModels } from '../utils/storage';
+import type { ChatSessionMeta } from '../utils/storage';
+import {
+  loadContextParams,
+  loadRoutstrFavorites,
+  loadRoutstrModelsCache,
+  loadCustomModels,
+  loadChatSessionsIndex,
+  createChatSession,
+  loadChatSession,
+  deleteChatSession,
+  setActiveChatSessionId as persistActiveSessionId,
+  loadActiveChatSessionId,
+  upsertChatSessionFromMessages,
+} from '../utils/storage';
 import type { LLMMessage } from '../utils/llmMessages';
 import type { LLMProvider } from '../services/llm/LLMProvider';
 import { LocalLLMProvider } from '../services/llm/LocalLLMProvider';
@@ -60,6 +74,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
 
   const messagesRef = useRef<MessageType.Any[]>([]);
   const [, setMessagesVersion] = useState(0); // For UI updates
+  const [messagesDirty, setMessagesDirty] = useState(0);
   const [isInitLoading, setIsInitLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [llm, setLlm] = useState<LLMProvider | null>(null);
@@ -83,6 +98,10 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
   const [displayedBalanceMsats, setDisplayedBalanceMsats] = useState<number | null>(null);
   const balanceAnimFrameRef = useRef<number | null>(null);
   const [showContextParamsModal, setShowContextParamsModal] = useState(false);
+  const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
+  const [chatSessions, setChatSessions] = useState<ChatSessionMeta[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const saveTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const loadToken = async () => {
@@ -95,6 +114,34 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
 
 
   useEffect(() => () => { llm?.release(); }, [llm]);
+
+  // Initialize or load chat sessions
+  useEffect(() => {
+    let cancelled = false;
+    const bootstrap = async () => {
+      const [index, storedActiveId] = await Promise.all([
+        loadChatSessionsIndex(),
+        loadActiveChatSessionId(),
+      ]);
+      if (cancelled) { return; }
+      setChatSessions(index);
+      let nextActive = storedActiveId;
+      if (!nextActive || !index.find((s) => s.id === nextActive)) {
+        const created = await createChatSession('New Chat', DEFAULT_SYSTEM_PROMPT);
+        nextActive = created.id;
+      }
+      setActiveSessionId(nextActive);
+      await persistActiveSessionId(nextActive);
+      const data = await loadChatSession(nextActive);
+      if (!cancelled && data) {
+        messagesRef.current = Array.isArray(data.messages) ? (data.messages as any[]) : [];
+        setSystemPrompt(typeof data.systemPrompt === 'string' && data.systemPrompt.length > 0 ? data.systemPrompt : DEFAULT_SYSTEM_PROMPT);
+        setMessagesVersion((v) => v + 1);
+      }
+    };
+    void bootstrap();
+    return () => { cancelled = true; };
+  }, []);
 
   const animateBalance = useCallback((from: number, to: number) => {
     if (balanceAnimFrameRef.current) {cancelAnimationFrame(balanceAnimFrameRef.current);}
@@ -274,6 +321,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
   const addMessage = useCallback((message: MessageType.Any) => {
     messagesRef.current = [message, ...messagesRef.current];
     setMessagesVersion((prev) => prev + 1);
+    setMessagesDirty((d) => d + 1);
   }, []);
 
   const updateMessage = (
@@ -289,6 +337,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
         return msg;
       });
       setMessagesVersion((prev) => prev + 1);
+      setMessagesDirty((d) => d + 1);
     }
   };
 
@@ -308,6 +357,37 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
     [addMessage],
   );
 
+  // Persist messages debounced when they change
+  useEffect(() => {
+    if (!activeSessionId) { return; }
+    if (saveTimerRef.current) { cancelAnimationFrame(saveTimerRef.current); }
+    const start = Date.now();
+    const tick = () => {
+      if (Date.now() - start < 250) {
+        saveTimerRef.current = requestAnimationFrame(tick);
+        return;
+      }
+      void (async () => {
+        try {
+          await upsertChatSessionFromMessages(activeSessionId, messagesRef.current as any[], systemPrompt);
+          const updated = await loadChatSessionsIndex();
+          setChatSessions(updated);
+        } catch {}
+      })();
+      saveTimerRef.current = null;
+    };
+    saveTimerRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (saveTimerRef.current) { cancelAnimationFrame(saveTimerRef.current); saveTimerRef.current = null; }
+    };
+  }, [activeSessionId, systemPrompt, messagesDirty]);
+
+  // Ensure effect runs when messages change by bumping a hidden dependency
+  const messagesBumpRef = useRef(0);
+  useEffect(() => {
+    messagesBumpRef.current += 1;
+  }, [/* intentionally empty: bump in add/update */]);
+
   const handleReset = useCallback(() => {
     Alert.alert(
       'Reset Chat',
@@ -323,6 +403,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
           onPress: () => {
             messagesRef.current = [];
             setMessagesVersion((prev) => prev + 1);
+            setMessagesDirty((d) => d + 1);
             addSystemMessage(
               'Hello! How can I help you today?',
             );
@@ -413,6 +494,46 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
     }
   };
 
+  const handleSwitchSession = useCallback(async (sessionId: string) => {
+    if (sessionId === activeSessionId) {
+      setShowHistoryDrawer(false);
+      return;
+    }
+    const data = await loadChatSession(sessionId);
+    if (!data) { return; }
+    messagesRef.current = Array.isArray(data.messages) ? (data.messages as any[]) : [];
+    setSystemPrompt(typeof data.systemPrompt === 'string' && data.systemPrompt.length > 0 ? data.systemPrompt : DEFAULT_SYSTEM_PROMPT);
+    setMessagesVersion((v) => v + 1);
+    setActiveSessionId(sessionId);
+    await persistActiveSessionId(sessionId);
+    setShowHistoryDrawer(false);
+  }, [activeSessionId]);
+
+  const handleNewChat = useCallback(async () => {
+    const created = await createChatSession('New Chat', DEFAULT_SYSTEM_PROMPT);
+    const index = await loadChatSessionsIndex();
+    setChatSessions(index);
+    setActiveSessionId(created.id);
+    await persistActiveSessionId(created.id);
+    messagesRef.current = [];
+    setSystemPrompt(DEFAULT_SYSTEM_PROMPT);
+    setMessagesVersion((v) => v + 1);
+  }, []);
+
+  const handleDeleteChat = useCallback(async (sessionId: string) => {
+    await deleteChatSession(sessionId);
+    const index = await loadChatSessionsIndex();
+    setChatSessions(index);
+    if (activeSessionId === sessionId) {
+      const next = index[0];
+      if (next) {
+        await handleSwitchSession(next.id);
+      } else {
+        await handleNewChat();
+      }
+    }
+  }, [activeSessionId, handleSwitchSession, handleNewChat]);
+
   // Build model groups for dropdown (only show downloaded local models)
   const modelGroups = [
     { title: 'Local Models', models: downloadedLocalModels },
@@ -482,7 +603,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
         </TouchableOpacity>
       ),
       headerLeft: () => (
-        isModelReady ? <HeaderButton iconName="refresh" onPress={handleReset} /> : null
+        <HeaderButton iconName="menu" onPress={() => setShowHistoryDrawer((v) => !v)} />
       ),
       headerRight: () => (
         provider === 'routstr' && routstrToken ? (
@@ -491,14 +612,14 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
               {displayedBalanceMsats != null ? `${displayedBalanceMsats.toLocaleString()} msats` : '—'}
             </Text>
           </View>
-        ) : provider === 'local' ? (
+        ) : provider === 'local' && selectedModelId ? (
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <HeaderButton iconName="cog-outline" onPress={() => setShowContextParamsModal(true)} />
           </View>
         ) : null
       ),
     });
-  }, [navigation, isModelReady, selectedModelName, theme, handleReset, routstrToken, displayedBalanceMsats, provider]);
+  }, [navigation, selectedModelName, theme, routstrToken, displayedBalanceMsats, provider, selectedModelId]);
 
   // Respond to header request via route params
   useEffect(() => {
@@ -581,7 +702,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
         renderBubble={renderBubble}
         emptyState={() => <View />}
         theme={isDark ? chatDarkTheme : chatLightTheme}
-        messages={messagesRef.current}
+        messages={messagesRef.current.map((m) => ({ ...m, createdAt: undefined }))}
         onSendPress={handleSendPress}
         user={user}
         textInputProps={{
@@ -590,6 +711,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
             ? 'AI is thinking...'
             : isModelReady ? 'Type your message here' : 'Select a model to start',
           keyboardType: 'ascii-capable',
+
         }}
       />
 
@@ -667,6 +789,17 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
           await reinitializeLocalWithParams(params);
           setShowContextParamsModal(false);
         }}
+      />
+
+      <ChatHistoryDrawer
+        visible={showHistoryDrawer}
+        onClose={() => setShowHistoryDrawer(false)}
+        sessions={chatSessions}
+        activeSessionId={activeSessionId}
+        onSelectSession={handleSwitchSession}
+        onDeleteSession={handleDeleteChat}
+        onNewChat={handleNewChat}
+        onResetCurrentChat={handleReset}
       />
     </View>
   );
