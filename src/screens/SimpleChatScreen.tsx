@@ -39,9 +39,12 @@ import {
   createChatSession,
   loadChatSession,
   deleteChatSession,
+  renameChatSession,
   setActiveChatSessionId as persistActiveSessionId,
   loadActiveChatSessionId,
   upsertChatSessionFromMessages,
+  saveLastSelectedModel,
+  loadLastSelectedModel,
 } from '../utils/storage';
 import type { LLMMessage } from '../utils/llmMessages';
 import type { LLMProvider } from '../services/llm/LLMProvider';
@@ -102,6 +105,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
   const [chatSessions, setChatSessions] = useState<ChatSessionMeta[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const saveTimerRef = useRef<number | null>(null);
+  const didRestoreRef = useRef<boolean>(false);
 
   useEffect(() => {
     const loadToken = async () => {
@@ -124,12 +128,15 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
         loadActiveChatSessionId(),
       ]);
       if (cancelled) { return; }
-      setChatSessions(index);
       let nextActive = storedActiveId;
-      if (!nextActive || !index.find((s) => s.id === nextActive)) {
+      let sessionsIndex = index;
+      if (!nextActive || !sessionsIndex.find((s) => s.id === nextActive)) {
         const created = await createChatSession('New Chat', DEFAULT_SYSTEM_PROMPT);
         nextActive = created.id;
+        sessionsIndex = await loadChatSessionsIndex();
+        if (cancelled) { return; }
       }
+      setChatSessions(sessionsIndex);
       setActiveSessionId(nextActive);
       await persistActiveSessionId(nextActive);
       const data = await loadChatSession(nextActive);
@@ -413,15 +420,15 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
     );
   }, [addSystemMessage]);
 
-  const initializeLocalModel = async (modelPath: string, overrideParams?: ContextParams) => {
+  const initializeLocalModel = useCallback(async (modelPath: string, overrideParams?: ContextParams) => {
     try {
       setIsInitLoading(true);
       setInitProgress(0);
 
       const params = overrideParams || contextParams || (await loadContextParams());
-      const provider = new LocalLLMProvider(modelPath.split('/').pop() || 'Local Model');
-      await provider.initialize({ model: modelPath, params, onProgress: (p) => setInitProgress(p) });
-      setLlm(provider);
+      const providerInstance = new LocalLLMProvider(modelPath.split('/').pop() || 'Local Model');
+      await providerInstance.initialize({ model: modelPath, params, onProgress: (p) => setInitProgress(p) });
+      setLlm(providerInstance);
       setIsModelReady(true);
       setInitProgress(100);
       setSelectedModelPath(modelPath);
@@ -438,9 +445,9 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
       setIsInitLoading(false);
       setInitProgress(0);
     }
-  };
+  }, [contextParams, addSystemMessage]);
 
-  const initializeRoutstrModel = async (model: UnifiedModelItemProps) => {
+  const initializeRoutstrModel = useCallback(async (model: UnifiedModelItemProps) => {
     if (!routstrToken) {
       setTokenInput('');
       setShowTokenModal(true);
@@ -448,9 +455,9 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
     }
 
     try {
-      const provider = new RoutstrProvider(model.name);
-      await provider.initialize({ apiKey: routstrToken, model: model.apiId || model.id });
-      setLlm(provider);
+      const providerInstance = new RoutstrProvider(model.name);
+      await providerInstance.initialize({ apiKey: routstrToken, model: model.apiId || model.id });
+      setLlm(providerInstance);
       setSelectedModelName(model.name);
       setSelectedModelId(model.id);
       setProvider('routstr');
@@ -464,12 +471,13 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
     } catch (error: any) {
       Alert.alert('Error', `Failed to initialize Routstr model: ${error.message}`);
     }
-  };
+  }, [routstrToken, refreshBalance, addSystemMessage]);
 
   const handleSelectModel = async (model: UnifiedModelItemProps) => {
     await llm?.release();
 
     if (model.type === 'routstr') {
+      void saveLastSelectedModel({ provider: 'routstr', id: model.id, name: model.name, apiId: model.apiId || model.id });
       await initializeRoutstrModel(model);
     } else {
       // Local model
@@ -478,6 +486,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
       setSelectedModelId(model.id);
       // Initialize from provided local path if available, else check downloaded by filename
       const anyModel = model as any;
+      void saveLastSelectedModel({ provider: 'local', id: model.id, name: model.name, filename: model.filename, localPath: anyModel?.localPath });
       if (anyModel.localPath) {
         await initializeLocalModel(anyModel.localPath as string);
       } else if (model.filename) {
@@ -493,6 +502,51 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
       }
     }
   };
+
+  // Restore last selected model and initialize on startup
+  useEffect(() => {
+    if (didRestoreRef.current) { return; }
+    let cancelled = false;
+    const restore = async () => {
+      try {
+        const last = await loadLastSelectedModel();
+        if (!last || cancelled) { return; }
+        if (last.provider === 'local') {
+          setProvider('local');
+          setSelectedModelName(last.name);
+          setSelectedModelId(last.id);
+          let modelPath: string | null = null;
+          if (last.localPath) {
+            modelPath = last.localPath;
+          } else {
+            const info = (MODELS as any)[last.id as keyof typeof MODELS];
+            const filename: string | undefined = last.filename || info?.filename;
+            if (filename) {
+              try {
+                const isDownloaded = await ModelDownloader.isModelDownloaded(filename);
+                if (isDownloaded) { modelPath = await ModelDownloader.getModelPath(filename); }
+              } catch {}
+            }
+          }
+          if (!cancelled && modelPath) {
+            await initializeLocalModel(modelPath);
+            didRestoreRef.current = true;
+          }
+        } else if (last.provider === 'routstr') {
+          setProvider('routstr');
+          setSelectedModelName(last.name);
+          setSelectedModelId(last.id);
+          if (routstrToken) {
+            const stub: UnifiedModelItemProps = { id: last.id, name: last.name, type: 'routstr', apiId: last.apiId || last.id, onSelect: () => {} };
+            await initializeRoutstrModel(stub);
+            didRestoreRef.current = true;
+          }
+        }
+      } catch {}
+    };
+    void restore();
+    return () => { cancelled = true; };
+  }, [routstrToken, initializeLocalModel, initializeRoutstrModel]);
 
   const handleSwitchSession = useCallback(async (sessionId: string) => {
     if (sessionId === activeSessionId) {
@@ -672,9 +726,10 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
             return { ...msg, text: typeof delta.content === 'string' ? delta.content.replace(/^\s+/, '') : msg.text, metadata: nextMeta };
           });
         });
+        const trimmedContent = typeof content === 'string' ? content.replace(/^\s+/, '') : content;
         updateMessage(responseId, (msg) => ({
           ...msg,
-          text: content,
+          text: trimmedContent,
           metadata: { ...msg.metadata, ...metadata },
         }));
       } else {
@@ -798,6 +853,7 @@ export default function SimpleChatScreen({ navigation, route }: { navigation: an
         activeSessionId={activeSessionId}
         onSelectSession={handleSwitchSession}
         onDeleteSession={handleDeleteChat}
+        onRenameSession={async (id, title) => { await renameChatSession(id, title); const index = await loadChatSessionsIndex(); setChatSessions(index); }}
         onNewChat={handleNewChat}
         onResetCurrentChat={handleReset}
       />

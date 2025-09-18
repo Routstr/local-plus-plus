@@ -466,6 +466,7 @@ export interface ChatSessionMeta {
   title: string
   createdAt: number
   updatedAt: number
+  customTitle?: boolean
 }
 
 export interface ChatSessionData {
@@ -536,7 +537,7 @@ export const deleteChatSession = async (sessionId: string): Promise<void> => {
 export const createChatSession = async (title: string = 'New Chat', systemPrompt?: string): Promise<ChatSessionMeta> => {
   const now = Date.now();
   const id = generateId();
-  const meta: ChatSessionMeta = { id, title, createdAt: now, updatedAt: now };
+  const meta: ChatSessionMeta = { id, title, createdAt: now, updatedAt: now, customTitle: false };
   const data: ChatSessionData = { id, messages: [], systemPrompt, updatedAt: now };
   const index = await loadChatSessionsIndex();
   await Promise.all([
@@ -549,7 +550,8 @@ export const createChatSession = async (title: string = 'New Chat', systemPrompt
 export const renameChatSession = async (sessionId: string, title: string): Promise<void> => {
   try {
     const index = await loadChatSessionsIndex();
-    const next = index.map((s) => (s.id === sessionId ? { ...s, title } : s));
+    const now = Date.now();
+    const next = index.map((s) => (s.id === sessionId ? { ...s, title, customTitle: true, updatedAt: now } : s));
     await saveChatSessionsIndex(next);
   } catch (error) {
     console.error('Error renaming chat session:', error);
@@ -590,16 +592,16 @@ export const upsertChatSessionFromMessages = async (
   };
   await saveChatSession(data);
   const index = await loadChatSessionsIndex();
+  const existingMeta = index.find((s) => s.id === sessionId) || null;
   const titleSource = (() => {
     const firstUser = [...messages].reverse().find((m: any) => m?.type === 'text' && m?.author?.id === 'user');
     const text: string = firstUser?.text || 'New Chat';
     return text.length > 48 ? `${text.slice(0, 48)}…` : text;
   })();
-  const updatedMeta: ChatSessionMeta | null = index.find((s) => s.id === sessionId)
+  const updatedMeta: ChatSessionMeta | null = existingMeta
     ? null
-    : { id: sessionId, title: titleSource, createdAt: now, updatedAt: now };
+    : { id: sessionId, title: titleSource, createdAt: now, updatedAt: now, customTitle: false };
   const next = index
-    .map((s) => (s.id === sessionId ? { ...s, title: titleSource, updatedAt: now } : s));
+    .map((s) => (s.id === sessionId ? { ...s, title: (existingMeta?.customTitle ? s.title : titleSource), updatedAt: now } : s));
   await saveChatSessionsIndex(updatedMeta ? [updatedMeta, ...next] : next);
 };
-
