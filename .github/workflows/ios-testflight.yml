@@ -2,8 +2,10 @@ name: iOS TestFlight
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - "**"
+    # tags:
+    #   - "v*"
   workflow_dispatch:
     inputs:
       tag:
@@ -70,8 +72,7 @@ jobs:
             clean archive \
             DEVELOPMENT_TEAM=YLK778Z528 \
             PRODUCT_BUNDLE_IDENTIFIER=com.routstr.localplusplus \
-            CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}" \
+            CODE_SIGN_STYLE=Automatic \
             COMPILER_INDEX_STORE_ENABLE=NO
 
       - name: Export IPA
@@ -85,16 +86,11 @@ jobs:
             <key>method</key>
             <string>app-store</string>
             <key>signingStyle</key>
-            <string>manual</string>
+            <string>automatic</string>
             <key>stripSwiftSymbols</key>
             <true/>
             <key>teamID</key>
             <string>YLK778Z528</string>
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>com.routstr.localplusplus</key>
-              <string>${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}</string>
-            </dict>
           </dict>
           </plist>
           EOF
