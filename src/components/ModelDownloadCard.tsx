@@ -268,6 +268,90 @@ function BaseModelDownloadCard({
 
   const downloader = new ModelDownloader();
 
+  // Reattach to background downloads
+  useEffect(() => {
+    let cancelled = false;
+    let unsubscribe: (() => void) | null = null;
+    let activeIndex = -1;
+
+    const progressWeight = files.length > 0 ? 1 / files.length : 1;
+
+    const attachToActive = () => {
+      if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+      activeIndex = -1;
+      for (let i = 0; i < files.length; i += 1) {
+        const f = files[i]!;
+        if (ModelDownloader.isDownloading(f.repo, f.filename)) {
+          activeIndex = i;
+          break;
+        }
+      }
+      if (activeIndex >= 0) {
+        const f = files[activeIndex]!;
+        if (!cancelled) {
+          setIsDownloading(true);
+          setDownloadStatus(`Downloading ${f.label || `file ${activeIndex + 1}`}...`);
+        }
+
+        const snapshot = ModelDownloader.getLatestProgress(f.repo, f.filename);
+        if (snapshot && !cancelled) {
+          const base = activeIndex * progressWeight * 100;
+          const perc = Math.round(Math.min(100, base + snapshot.percentage * progressWeight));
+          setProgress({ ...snapshot, percentage: perc });
+        }
+
+        unsubscribe = ModelDownloader.subscribe(f.repo, f.filename, (p) => {
+          if (cancelled) { return; }
+          const base = activeIndex * progressWeight * 100;
+          const perc = Math.round(Math.min(100, base + p.percentage * progressWeight));
+          setProgress({ ...p, percentage: perc });
+        });
+      }
+    };
+
+    const tick = async () => {
+      if (cancelled) { return; }
+      const allDownloaded = await Promise.all(
+        files.map((file) => ModelDownloader.isModelDownloaded(file.filename)),
+      );
+      if (allDownloaded.every(Boolean)) {
+        if (!cancelled) {
+          setIsDownloaded(true);
+          setIsDownloading(false);
+          setProgress(null);
+          setDownloadStatus('');
+        }
+        return;
+      }
+
+      let foundActive = false;
+      for (let i = 0; i < files.length; i += 1) {
+        const f = files[i]!;
+        if (ModelDownloader.isDownloading(f.repo, f.filename)) {
+          foundActive = true;
+          if (i !== activeIndex) {
+            attachToActive();
+          }
+          break;
+        }
+      }
+      if (!foundActive) {
+        // No active download but not fully downloaded yet; try to reattach in case next file starts
+        attachToActive();
+      }
+    };
+
+    // Initial attach
+    attachToActive();
+    const interval = setInterval(tick, 1000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      if (unsubscribe) { unsubscribe(); }
+    };
+  }, [files]);
+
   const checkIfDownloaded = React.useCallback(async () => {
     try {
       const downloadStatuses = await Promise.all(

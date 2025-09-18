@@ -11,6 +11,64 @@ export interface DownloadProgress {
 export class ModelDownloader {
   private activeDownloads = new Map<string, boolean>();
 
+  // Global shared state so downloads persist across component lifecycles
+  private static globalActiveDownloads: Map<string, boolean> = new Map();
+  private static globalProgress: Map<string, DownloadProgress> = new Map();
+  private static globalListeners: Map<string, Set<(p: DownloadProgress) => void>> = new Map();
+
+  private static makeKey(repo: string, filename: string): string {
+    const split = this.generateSplitFilenames(filename);
+    const keyFilename = split.length > 1 ? split[0]! : filename;
+    return `${repo}/${keyFilename}`;
+  }
+
+  static isDownloading(repo: string, filename: string): boolean {
+    const key = this.makeKey(repo, filename);
+    return this.globalActiveDownloads.get(key) === true;
+  }
+
+  static getLatestProgress(repo: string, filename: string): DownloadProgress | null {
+    const key = this.makeKey(repo, filename);
+    return this.globalProgress.get(key) || null;
+  }
+
+  static subscribe(repo: string, filename: string, listener: (p: DownloadProgress) => void): () => void {
+    const key = this.makeKey(repo, filename);
+    if (!this.globalListeners.has(key)) {
+      this.globalListeners.set(key, new Set());
+    }
+    this.globalListeners.get(key)!.add(listener);
+    // Emit current snapshot if available
+    const current = this.globalProgress.get(key);
+    if (current) { listener(current); }
+    return () => {
+      const set = this.globalListeners.get(key);
+      if (set) {
+        set.delete(listener);
+        if (set.size === 0) { this.globalListeners.delete(key); }
+      }
+    };
+  }
+
+  private static publishProgress(key: string, progress: DownloadProgress): void {
+    this.globalProgress.set(key, progress);
+    const listeners = this.globalListeners.get(key);
+    if (listeners && listeners.size > 0) {
+      listeners.forEach((cb) => {
+        try { cb(progress); } catch {}
+      });
+    }
+  }
+
+  private static markActive(key: string, active: boolean): void {
+    if (active) {
+      this.globalActiveDownloads.set(key, true);
+    } else {
+      this.globalActiveDownloads.delete(key);
+      // Retain last progress snapshot for late subscribers; do not delete here
+    }
+  }
+
   /**
    * Detect if a filename follows the split GGUF pattern: xx-00001-of-00003.gguf
    * Returns split info if it's a split file, null otherwise
@@ -89,6 +147,7 @@ export class ModelDownloader {
     }
 
     this.activeDownloads.set(downloadKey, true);
+    ModelDownloader.markActive(downloadKey, true);
 
     try {
       const downloadDir = `${RNBlobUtil.fs.dirs.DocumentDir}/models`;
@@ -190,11 +249,9 @@ export class ModelDownloader {
         const response = await config
           .fetch('GET', url, token ? { Authorization: `Bearer ${token}` } : {})
           .progress((written, total) => {
-            if (onProgress && Number(total) > 0) {
-              // Update file size if we didn't get it from HEAD request
+            if (Number(total) > 0) {
               if (fileSizes[i] === 0 && Number(total) > 0) {
                 fileSizes[i] = Number(total);
-                // Recalculate total expected size
                 totalExpectedSize = fileSizes.reduce((sum, size) => sum + size, 0);
               }
 
@@ -202,11 +259,14 @@ export class ModelDownloader {
               const totalDownloadedSoFar = totalBytesDownloaded + currentFileBytes;
 
               if (totalExpectedSize > 0) {
-                onProgress({
+                const prog = {
                   written: totalDownloadedSoFar,
                   total: totalExpectedSize,
                   percentage: Math.round((totalDownloadedSoFar / totalExpectedSize) * 100),
-                });
+                } as DownloadProgress;
+                // Publish globally and to local callback
+                ModelDownloader.publishProgress(downloadKey, prog);
+                if (onProgress) { onProgress(prog); }
               }
             }
           });
@@ -229,9 +289,11 @@ export class ModelDownloader {
 
 
       this.activeDownloads.delete(downloadKey);
+      ModelDownloader.markActive(downloadKey, false);
       return `${downloadDir}/${filenames[0]}`; // Return first file path for model loading
     } catch (error) {
       this.activeDownloads.delete(downloadKey);
+      ModelDownloader.markActive(downloadKey, false);
 
       // Clean up temp files if they exist
       await Promise.all(
@@ -266,6 +328,7 @@ export class ModelDownloader {
     }
 
     this.activeDownloads.set(downloadKey, true);
+    ModelDownloader.markActive(downloadKey, true);
 
     try {
       const url = getModelDownloadUrl(repo, filename);
@@ -294,12 +357,14 @@ export class ModelDownloader {
       const response = await config
         .fetch('GET', url, token ? { Authorization: `Bearer ${token}` } : {})
         .progress((written, total) => {
-          if (onProgress && Number(total) > 0) {
-            onProgress({
+          if (Number(total) > 0) {
+            const prog = {
               written: Number(written),
               total: Number(total),
               percentage: Math.round((Number(written) / Number(total)) * 100),
-            });
+            } as DownloadProgress;
+            ModelDownloader.publishProgress(downloadKey, prog);
+            if (onProgress) { onProgress(prog); }
           }
         });
 
@@ -315,9 +380,11 @@ export class ModelDownloader {
       await RNBlobUtil.fs.mv(`${filePath}.tmp`, filePath);
 
       this.activeDownloads.delete(downloadKey);
+      ModelDownloader.markActive(downloadKey, false);
       return filePath;
     } catch (error) {
       this.activeDownloads.delete(downloadKey);
+      ModelDownloader.markActive(downloadKey, false);
 
       // Clean up temp file if it exists
       try {
