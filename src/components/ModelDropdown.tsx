@@ -172,9 +172,11 @@ export default function ModelDropdown({
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-20)).current;
   const [canDismiss, setCanDismiss] = useState(false);
+  const [isRendered, setIsRendered] = useState<boolean>(visible);
 
   useEffect(() => {
     if (visible) {
+      setIsRendered(true);
       setCanDismiss(false);
       Animated.parallel([
         Animated.timing(fadeAnim, {
@@ -188,7 +190,8 @@ export default function ModelDropdown({
           useNativeDriver: true,
         }),
       ]).start(() => setCanDismiss(true));
-    } else {
+    } else if (isRendered) {
+      setCanDismiss(false);
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 0,
@@ -200,9 +203,11 @@ export default function ModelDropdown({
           duration: 150,
           useNativeDriver: true,
         }),
-      ]).start(() => setCanDismiss(false));
+      ]).start(({ finished }) => {
+        if (finished) { setIsRendered(false); }
+      });
     }
-  }, [visible, fadeAnim, slideAnim]);
+  }, [visible, isRendered, fadeAnim, slideAnim]);
 
   const handleSelectModel = (model: UnifiedModelItemProps) => {
     if (!canDismiss) { return; }
@@ -221,7 +226,7 @@ export default function ModelDropdown({
 
   return (
     <Modal
-      visible={visible}
+      visible={isRendered}
       transparent
       animationType="none"
       onRequestClose={onClose}
