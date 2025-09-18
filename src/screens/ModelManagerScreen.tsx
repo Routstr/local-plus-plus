@@ -73,7 +73,7 @@ export default function ModelManagerScreen({ navigation }: { navigation: any }) 
     let mounted = true;
     // synchronous attempt: use in-memory cache immediately
     loadRoutstrModelsCache().then((cached) => {
-      if (mounted) {setRoutstrModels(cached);} 
+      if (mounted) {setRoutstrModels(cached);}
     });
     return () => { mounted = false; };
   }, [mode]);
