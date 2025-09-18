@@ -73,7 +73,8 @@ jobs:
             DEVELOPMENT_TEAM=YLK778Z528 \
             PRODUCT_BUNDLE_IDENTIFIER=com.routstr.localplusplus \
             CODE_SIGN_STYLE=Automatic \
-            COMPILER_INDEX_STORE_ENABLE=NO
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            -allowProvisioningUpdates
 
       - name: Export IPA
         run: |
@@ -94,7 +95,7 @@ jobs:
           </dict>
           </plist>
           EOF
-          xcodebuild -exportArchive -archivePath build/LocalPlusPlus.xcarchive -exportPath build -exportOptionsPlist ExportOptions.plist
+          xcodebuild -exportArchive -archivePath build/LocalPlusPlus.xcarchive -exportPath build -exportOptionsPlist ExportOptions.plist -allowProvisioningUpdates
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
